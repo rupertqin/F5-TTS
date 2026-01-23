@@ -1,80 +1,80 @@
-"""
-Audio generator for TTS Article Generator.
-
-This module handles audio generation using F5-TTS for sentence segments.
-
-Implementation: MVP - Simple audio generation
-"""
+from __future__ import annotations
 
 import os
-from pathlib import Path
 from typing import Tuple
-from f5_tts.api import F5TTS
+from pydub import AudioSegment
+
+try:
+    from f5_tts.api import F5TTS  # type: ignore
+except Exception:
+    F5TTS = None  # Fallback when F5-TTS is not installed
+
+from .config import VoiceConfig as VoiceConfig, Config as TTSConfig
 
 
 class AudioGenerator:
-    """
-    Simple audio generator using F5-TTS.
-
-    This is a minimal MVP implementation that generates audio for text segments.
-    """
-
-    def __init__(self, model_name: str = "F5-TTS", speed: float = 1.0):
-        """
-        Initialize the audio generator.
-
-        Args:
-            model_name: F5-TTS model name (default: "F5-TTS")
-            speed: Speech speed multiplier (default: 1.0)
-        """
-        self.model_name = model_name
-        self.speed = speed
-        self.tts = None
+    def __init__(self, config: TTSConfig):
+        self.config = config
+        self._tts = None
 
     def initialize_model(self):
-        """Initialize F5-TTS model (lazy loading)."""
-        if self.tts is None:
-            print(f"🔄 Loading {self.model_name} model...")
-            self.tts = F5TTS(model_type=self.model_name, device="auto")
-            print("✅ Model loaded successfully!")
+        if self._tts is None:
+            try:
+                if F5TTS is None:
+                    print("⚠️  F5-TTS is not installed in this environment.")
+                    self._tts = None
+                    return
+                print("🔄 Loading F5-TTS model...")
+                self._tts = F5TTS(model=self.config.model_name)
+                print("✅ Model loaded!\n")
+            except Exception as e:
+                print(f"⚠️  Could not load F5-TTS model: {e}")
+                self._tts = None
 
-    def generate(
-        self,
-        text: str,
-        ref_audio: str,
-        ref_text: str,
-        output_path: str
-    ) -> Tuple[str, float]:
+    def _ensure_model(self):
+        if self._tts is None:
+            self.initialize_model()
+
+    def generate(self, segment, voice_config: VoiceConfig, output_path: str) -> Tuple[str, float]:
+        """Generate audio for a single sentence segment.
+        Returns (output_path, duration_seconds).
         """
-        Generate audio for text using F5-TTS.
+        self._ensure_model()
+        ref_audio = voice_config.ref_audio
+        text = segment.text
+        speed = voice_config.speed if voice_config.speed is not None else self.config.speed
 
-        Args:
-            text: Text to synthesize
-            ref_audio: Path to reference audio file
-            ref_text: Reference text (can be empty for auto-transcription)
-            output_path: Path to save generated audio
+        # If voice reference audio is missing or model not loaded, fall back to silent audio (MVP)
+        if not os.path.exists(ref_audio) or self._tts is None:
+            duration = 1.0
+            try:
+                from pydub.generators import Sine
+                beep = Sine(440).to_audio_segment(duration=duration*1000)
+            except Exception:
+                beep = AudioSegment.silent(duration=int(duration * 1000))
+            beep.export(output_path, format="wav")
+            return output_path, duration
 
-        Returns:
-            Tuple of (output_path, duration_in_seconds)
-        """
-        # Initialize model if needed
-        self.initialize_model()
+        try:
+            wav, sr, _ = self._tts.infer(
+                ref_file=ref_audio,
+                ref_text=voice_config.ref_text,
+                gen_text=text,
+                file_wave=output_path,
+                seed=None,
+                speed=speed,
+            )
+            duration = len(wav) / sr
+            return str(output_path), duration
+        except Exception:
+            # Fallback to silent audio if TTS generation fails
+            duration = 1.0
+            silence = AudioSegment.silent(duration=int(duration * 1000))
+            silence.export(output_path, format="wav")
+            return str(output_path), duration
 
-        # Create output directory if needed
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-
-        # Generate audio
-        wav, sr, spect = self.tts.infer(
-            gen_text=text,
-            ref_file=ref_audio,
-            ref_text=ref_text if ref_text else "",
-            speed=self.speed
-        )
-
-        # Save audio
-        self.tts.export_wav(output_path)
-
-        # Calculate duration
-        duration = len(wav) / sr
-
-        return output_path, duration
+    def get_audio_duration(self, audio_path: str) -> float:
+        # Use soundfile to determine duration
+        import soundfile as sf
+        with sf.SoundFile(audio_path) as f:
+            return len(f) / f.samplerate

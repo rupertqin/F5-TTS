@@ -1,10 +1,36 @@
-"""
-File concatenator for TTS Article Generator.
+from __future__ import annotations
 
-This module handles concatenation of audio segments and subtitle entries
-into final output files.
+from typing import List
+from pydub import AudioSegment
+import os
 
-Implementation: Task 7.1 - 7.3
-"""
+from .subtitle_generator import SubtitleEntry
 
-# FileConcatenator will be implemented in tasks 7.1-7.3
+
+class FileConcatenator:
+    def __init__(self):
+        pass
+
+    def concatenate_audio(
+        self,
+        audio_paths: List[str],
+        output_path: str,
+        cross_fade_duration: float = 0.15,
+    ) -> str:
+        if not audio_paths:
+            raise ValueError("No audio paths provided for concatenation")
+        combined: AudioSegment = AudioSegment.from_file(audio_paths[0])
+        for p in audio_paths[1:]:
+            next_seg = AudioSegment.from_file(p)
+            combined = combined.append(next_seg, crossfade=int(cross_fade_duration * 1000))
+        # Ensure WAV output
+        combined.export(output_path, format="wav")
+        return output_path
+
+    def concatenate_subtitles(
+        self, entries: List[SubtitleEntry], output_path: str
+    ) -> str:
+        # For compatibility, delegate to generating an SRT from entries
+        from .subtitle_generator import SubtitleGenerator
+        sg = SubtitleGenerator()
+        return sg.generate_srt(entries, output_path)

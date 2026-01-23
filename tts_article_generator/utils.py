@@ -1,7 +1,6 @@
-"""
-Utility functions for TTS Article Generator.
+from __future__ import annotations
 
-This module contains helper functions and utilities used across the project.
-"""
+import re
 
-# Utility functions will be added as needed during implementation
+def remove_voice_markers(text: str) -> str:
+    return re.sub(r"\[[^\]]+\]", "", text).strip()
