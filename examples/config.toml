@@ -1,0 +1,197 @@
+# TTS Article Generator - Example Configuration File
+# ===================================================
+# This file demonstrates all available configuration options for the
+# TTS Article Generator system. Copy this file and modify it according
+# to your needs.
+
+# ============================================================================
+# Basic Configuration (Required)
+# ============================================================================
+
+# Path to the input article text file
+# The article will be split into sentences and converted to speech
+# Supports UTF-8 encoding for Chinese and English text
+input_article = "examples/article.txt"
+
+# Directory where output files will be saved
+# The system will create this directory if it doesn't exist
+# Output includes: final audio file, final subtitle file, and segment files
+output_dir = "output"
+
+# Directory for cache files (optional, default: ".cache")
+# Cache enables resume functionality - if generation is interrupted,
+# the system can continue from where it left off
+cache_dir = ".cache"
+
+# Enable or disable caching (optional, default: true)
+# Set to false to always regenerate all audio segments
+enable_cache = true
+
+# ============================================================================
+# Article Splitting Configuration
+# ============================================================================
+
+# Maximum length of each sentence segment in characters (optional, default: 200)
+# Longer sentences will be split at punctuation marks (commas, semicolons, etc.)
+# Recommended range: 50-300 characters
+# - Too short: May result in unnatural pauses
+# - Too long: May exceed TTS model limits or sound rushed
+max_sentence_length = 200
+
+# ============================================================================
+# F5-TTS Model Configuration
+# ============================================================================
+
+# Model name (optional, default: "F5-TTS")
+# Available models:
+# - "F5-TTS": Standard F5-TTS model
+# - "F5TTS_Base": Base model variant
+# Note: Model availability depends on your F5-TTS installation
+model_name = "F5-TTS"
+
+# Number of sampling steps (optional, default: 32)
+# Higher values produce better quality but take longer
+# Recommended range: 16-64
+# - 16: Fast, lower quality
+# - 32: Balanced (recommended)
+# - 64: Slow, higher quality
+nfe_step = 32
+
+# CFG (Classifier-Free Guidance) strength (optional, default: 2.0)
+# Controls how closely the model follows the reference audio
+# Recommended range: 1.0-3.0
+# - Lower values: More variation, less similar to reference
+# - Higher values: More similar to reference, less variation
+cfg_strength = 2.0
+
+# Global speech speed multiplier (optional, default: 1.0)
+# Affects all voices unless overridden per-voice
+# Recommended range: 0.5-2.0
+# - 0.8: Slower, more deliberate
+# - 1.0: Normal speed
+# - 1.2: Faster, more energetic
+speed = 1.0
+
+# ============================================================================
+# Voice Configuration (Required)
+# ============================================================================
+# At least one voice must be configured. The first voice is typically used
+# as the default/main voice. You can define multiple voices for different
+# characters or narration styles.
+#
+# Voice Markers in Article:
+# Use [voice_name] in your article to switch between voices:
+#   This uses the default voice.
+#   [narrator]
+#   This uses the narrator voice.
+#   [character1]
+#   This uses character1 voice.
+#   [main]
+#   Back to the main voice.
+
+# Main/Default Voice (Required)
+# This voice will be used for text without explicit voice markers
+[voices.main]
+# Path to the reference audio file (WAV format, required)
+# The reference audio defines the voice characteristics (tone, pitch, style)
+# Recommended: 3-10 seconds of clear speech
+ref_audio = "examples/voices/main.wav"
+
+# Reference text (optional, default: "")
+# The text content of the reference audio
+# If left empty, the system will attempt to auto-transcribe
+# Providing accurate reference text improves quality
+ref_text = ""
+
+# Voice-specific speed multiplier (optional)
+# If specified, overrides the global speed setting for this voice
+# Uncomment to use:
+# speed = 1.0
+
+# ============================================================================
+# Additional Voices (Optional)
+# ============================================================================
+# You can define as many additional voices as needed
+# Each voice should have a unique name and reference audio
+
+# Example: Narrator Voice
+# Useful for descriptive passages or scene-setting
+[voices.narrator]
+ref_audio = "examples/voices/narrator.wav"
+ref_text = "这是旁白的声音，用于叙述故事背景。"
+speed = 0.9  # Slightly slower for clarity
+
+# Example: Character Voice 1
+# Useful for dialogue or character-specific content
+[voices.character1]
+ref_audio = "examples/voices/character1.wav"
+ref_text = "你好，我是角色一。"
+# speed = 1.1  # Slightly faster for energetic character
+
+# Example: Character Voice 2
+# Another character with different voice characteristics
+[voices.character2]
+ref_audio = "examples/voices/character2.wav"
+ref_text = ""  # Auto-transcribe
+# speed = 1.0
+
+# ============================================================================
+# Usage Notes
+# ============================================================================
+#
+# 1. File Paths:
+#    - Can be absolute or relative to the working directory
+#    - Use forward slashes (/) or escaped backslashes (\\) on Windows
+#    - Example: "C:/Users/YourName/voices/main.wav" or "C:\\Users\\YourName\\voices\\main.wav"
+#
+# 2. Voice Reference Audio:
+#    - Must be WAV format
+#    - Recommended: 16kHz or 24kHz sample rate
+#    - Should contain clear, high-quality speech
+#    - Avoid background noise or music
+#    - 3-10 seconds duration is ideal
+#
+# 3. Reference Text:
+#    - Should match the audio content exactly
+#    - Include punctuation for better results
+#    - Can be left empty for auto-transcription
+#    - Chinese and English text are both supported
+#
+# 4. Performance Tips:
+#    - Lower nfe_step for faster generation (quality trade-off)
+#    - Enable cache to resume interrupted generations
+#    - Use shorter max_sentence_length for more granular control
+#
+# 5. Quality Tips:
+#    - Use high-quality reference audio (clear, no noise)
+#    - Provide accurate reference text when possible
+#    - Adjust cfg_strength to balance similarity vs. variation
+#    - Test different speed values to find the best pace
+#
+# 6. Command-Line Override:
+#    - Most settings can be overridden via command-line arguments
+#    - Command-line arguments take precedence over config file
+#    - Example: --input article.txt --output my_output/
+#
+# ============================================================================
+# Troubleshooting
+# ============================================================================
+#
+# Problem: "Reference audio file not found"
+# Solution: Check that the ref_audio path is correct and the file exists
+#
+# Problem: "At least one voice must be configured"
+# Solution: Ensure you have defined at least one [voices.name] section
+#
+# Problem: Audio quality is poor
+# Solution: Try increasing nfe_step, using better reference audio, or
+#           adjusting cfg_strength
+#
+# Problem: Generation is too slow
+# Solution: Decrease nfe_step, or check GPU availability
+#
+# Problem: Voice doesn't match reference
+# Solution: Provide accurate ref_text, increase cfg_strength, or use
+#           longer/clearer reference audio
+#
+# ============================================================================
