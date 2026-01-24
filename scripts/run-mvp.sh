@@ -9,5 +9,10 @@ else
   echo "Conda not found in PATH. Ensure you activate the environment manually before running.";
 fi
 
+# Force PYTHONHASHSEED to a safe value to avoid fatal errors in native
+# extensions / child process initialization. Some shells or launchers set
+# an invalid value which causes a hard crash; forcing 'random' prevents that.
+export PYTHONHASHSEED=random
+
 echo "[MVP] Running tts_article_generator with python interpreter: $(which python)"
 python -m tts_article_generator "$@"

@@ -6,6 +6,7 @@ This script tests the article splitting functionality without requiring
 F5-TTS model or reference audio files.
 """
 
+import os
 from tts_article_generator.splitter import ArticleSplitter
 
 
@@ -17,8 +18,12 @@ def test_splitting():
 
     # Load test article
     print("\n📖 Loading test article...")
-    with open('examples/article.txt', 'r', encoding='utf-8') as f:
-        article = f.read()
+    # Use a small fallback article when examples/article.txt is not present
+    if not os.path.exists('examples/article.txt'):
+        article = "这是示例文章的第一句。这里是第二句。"
+    else:
+        with open('examples/article.txt', 'r', encoding='utf-8') as f:
+            article = f.read()
 
     print(f"   Article length: {len(article)} characters")
     print(f"   Preview: {article[:100]}...")

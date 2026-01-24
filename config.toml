@@ -1,0 +1,80 @@
+input_article = "gen/speech.txt"
+output_dir = "gen/output"
+cache_dir = ".cache"
+model_name = "F5TTS_v1_Base"
+max_sentence_length = 200
+enable_cache = true
+
+# Default/main voice points to tender
+[voices.main]
+ref_audio = "voices/f-a/tender.wav"
+ref_text = ""
+speed = 1.0
+
+# f-a voices
+[voices."tender"]
+ref_audio = "voices/f-a/tender.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."happy"]
+ref_audio = "voices/f-a/happy.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."confused"]
+ref_audio = "voices/f-a/confused.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."sad"]
+ref_audio = "voices/f-a/sad.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."friendly"]
+ref_audio = "voices/f-a/friendly.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."angry"]
+ref_audio = "voices/f-a/angry.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."fear"]
+ref_audio = "voices/f-a/fear.wav"
+ref_text = ""
+speed = 1.0
+
+# f-b voices
+[voices."haoya"]
+ref_audio = "voices/f-b/haoya.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."heng"]
+ref_audio = "voices/f-b/heng.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."wa"]
+ref_audio = "voices/f-b/wa.wav"
+ref_text = ""
+speed = 1.0
+
+# f-c voices
+[voices."heihei"]
+ref_audio = "voices/f-c/heihei.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."xiaoshagua"]
+ref_audio = "voices/f-c/xiaoshagua.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."shiya"]
+ref_audio = "voices/f-c/shiya.wav"
+ref_text = ""
+speed = 1.0
