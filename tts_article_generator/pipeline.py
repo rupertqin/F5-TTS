@@ -53,22 +53,16 @@ class GenerationPipeline:
             raise ValueError("No segments produced from article.")
 
         # Determine which voices are referenced in the article and build a
-        # trimmed voices map to pass to the TTS engine. Default voice is
-        # 'f-a/tender' if present; otherwise fall back to config 'main'.
+        # voices map to pass to the TTS engine. If none specified, fall back to main.
         referenced = set(s.voice_name for s in segments if s.voice_name)
         voices_for_tts = {}
-        default_key = "f-a/tender"
         for vkey in referenced:
             if self.voices and vkey in self.voices:
                 voices_for_tts[vkey] = self.voices[vkey]
-
-        # Ensure default tender is available in the voices passed to TTS
-        if default_key not in voices_for_tts:
-            if self.voices and default_key in self.voices:
-                voices_for_tts[default_key] = self.voices[default_key]
-            elif self.voices and "main" in self.voices:
-                # map main to default_key internally so caller code can rely on tender
-                voices_for_tts[default_key] = self.voices["main"]
+        # Fallback to main voice if nothing specified
+        if not voices_for_tts:
+            if self.voices and "main" in self.voices:
+                voices_for_tts["main"] = self.voices["main"]
 
         # Build a lightweight TTS config for AudioGenerator and initialize it
         from .config import Config as TTSConfig
