@@ -7,7 +7,7 @@ enable_cache = true
 
 # Default/main voice points to tender
 [voices.main]
-ref_audio = "voices/f-a/tender.wav"
+ref_audio = "voices/f-a/happy.wav"
 ref_text = ""
 speed = 1.0
 

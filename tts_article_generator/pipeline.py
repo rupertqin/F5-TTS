@@ -235,8 +235,8 @@ class GenerationPipeline:
         final_srt = Path(self.config.output_dir) / "final_output.srt"
         if generated_audio_paths:
             self.concater.concatenate_audio(generated_audio_paths, str(final_audio))
-        # Write final subtitles
-        self.subtitle_gen.generate_srt(entries, str(final_srt))
+        # Write final subtitles with configurable width
+        self.subtitle_gen.generate_srt(entries, str(final_srt), max_chars=self.config.subtitle_max_width)
         # Return final artifact paths
         return str(final_audio), str(final_srt)
 
