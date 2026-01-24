@@ -1,17 +1,30 @@
 from __future__ import annotations
 
 import os
-import time
 import json
 from pathlib import Path
 from typing import List, Tuple, Dict
 
 from .splitter import ArticleSplitter, SentenceSegment
-from .cache import CacheManager, CacheEntry
 from .audio_generator import AudioGenerator, VoiceConfig  # type: ignore
-# Subtitle feature removed: no per-line subtitle generation
 from .concatenator import FileConcatenator
 from .config import Config, VoiceConfig as VoiceCfg
+import re
+import hashlib
+
+
+def _sanitize_for_filename(text: str, max_len: int = 60) -> str:
+    # Basic slugify: remove punctuation, lowercase, spaces to underscores
+    if not isinstance(text, str):
+        text = str(text)
+    text = re.sub(r"[^A-Za-z0-9\s]", "", text)
+    text = text.strip().lower()
+    text = re.sub(r"\s+", "_", text)
+    if max_len and len(text) > max_len:
+        text = text[:max_len]
+    return text
+def slugify_text(text: str, max_len: int = 60) -> str:
+    return _sanitize_for_filename(text, max_len=max_len)
 from pydub import AudioSegment
 
 
@@ -24,8 +37,6 @@ class GenerationPipeline:
         self.audio_gen = None
         self.concater = FileConcatenator()
         self.voices = config.voices  # Dict[str, VoiceCfg]
-        # Prepare task id and cache
-        self.cache = None  # type: ignore
 
     def _load_article(self) -> str:
         path = Path(self.config.input_article)
@@ -69,14 +80,12 @@ class GenerationPipeline:
         tts_config = TTSConfig(
             input_article=self.config.input_article,
             output_dir=self.config.output_dir,
-            cache_dir=getattr(self.config, "cache_dir", ".cache"),
             max_sentence_length=self.config.max_sentence_length,
             model_name=self.config.model_name,
             nfe_step=self.config.nfe_step,
             cfg_strength=self.config.cfg_strength,
             speed=self.config.speed,
             voices=voices_for_tts,
-            enable_cache=getattr(self.config, "enable_cache", True),
         )
         self.audio_gen = AudioGenerator(tts_config)
         # Force model initialization up-front so failures are explicit and we
@@ -85,25 +94,13 @@ class GenerationPipeline:
         if self.audio_gen._tts is None:
             raise RuntimeError("Failed to initialize TTS model; aborting generation.")
 
-        # Initialize cache with a simple task_id
-        # We base task_id on article content hash and config
-        article_path = str(self.config.input_article)
-        from .cache import CacheManager
-        # Generate a deterministic task_id by hashing content and config
-        try:
-            task_mgr = CacheManager(self.config.cache_dir, "tmp-task")
-            task_id = task_mgr.generate_task_id(article_path, self.config)
-        except Exception:
-            task_id = "tmp-task"
-        self.cache = CacheManager(self.config.cache_dir, task_id)
-        self.cache.load_cache()
-
         # Output directories
         audio_dir = Path(self.config.output_dir) / "audio"
         audio_dir.mkdir(parents=True, exist_ok=True)
 
         # Prepare to generate/collect audio files
         generated_audio_paths: List[str] = []
+        per_segment_audio_paths: List[str] = []
         entries: List[object] = []
         current_time = 0.0
         # If multiple different voices are referenced, use a multi-speech path:
@@ -128,22 +125,46 @@ class GenerationPipeline:
                             ref_text = open(txt, "r", encoding="utf-8").read().strip()
                         except Exception:
                             ref_text = ""
+                    # Fall back to root speech.txt if present
+                    if not ref_text:
+                        root_speech = Path(__file__).resolve().parents[2] / "speech.txt"
+                        if root_speech.exists():
+                            try:
+                                with open(root_speech, "r", encoding="utf-8") as sf:
+                                    content = sf.read().strip()
+                                if content:
+                                    ref_text = content
+                            except Exception:
+                                pass
                 speech_types[v] = (vc.ref_audio, ref_text or "", vc.speed if vc.speed is not None else self.config.speed)
 
             # Now generate per segment using the loaded model infer directly
             for seg in segments:
                 ref_audio, ref_text, v_speed = speech_types.get(seg.voice_name, speech_types.get("f-a/tender"))
-                audio_path = audio_dir / f"segment_{seg.index:04d}.wav"
-                # Call model infer directly (model already initialized)
-                wav, sr, spec = self.audio_gen._tts.infer(
-                    ref_file=ref_audio,
-                    ref_text=ref_text,
-                    gen_text=seg.text,
-                    file_wave=str(audio_path),
-                    nfe_step=self.config.nfe_step,
-                    cfg_strength=self.config.cfg_strength,
-                    speed=v_speed,
-                )
+                accent = seg.voice_name or "main"
+                slug = slugify_text(seg.text, max_len=40)
+                if not slug:
+                    # Fallback to a short hash if text becomes empty after slugification
+                    slug = hashlib.sha1(seg.text.encode('utf-8')).hexdigest()[:6]
+                base_path = audio_dir / f"{accent}_{slug}.wav"
+                audio_path = base_path
+                # If file already exists, reuse it (slug-based path includes text hash)
+                if base_path.exists():
+                    audio_path = base_path
+                else:
+                    # Call model infer directly (model already initialized)
+                    wav, sr, spec = self.audio_gen._tts.infer(
+                        ref_file=ref_audio,
+                        ref_text=ref_text,
+                        gen_text=seg.text,
+                        file_wave=str(audio_path),
+                        nfe_step=self.config.nfe_step,
+                        cfg_strength=self.config.cfg_strength,
+                        speed=v_speed,
+                    )
+                duration = len(AudioSegment.from_wav(str(audio_path))) / 1000.0
+                generated_audio_paths.append(str(audio_path))
+                per_segment_audio_paths.append(str(audio_path))
                 # Some models may produce audio that contains residual frames
                 # matching the reference audio (or may be clipped). To reduce
                 # audible artifacts at segment boundaries we add a short
@@ -163,12 +184,9 @@ class GenerationPipeline:
                     pass
                 duration = len(AudioSegment.from_wav(str(audio_path))) / 1000.0
                 generated_audio_paths.append(str(audio_path))
-                if self.cache:
-                    ce = CacheEntry(segment_index=seg.index, audio_path=str(audio_path), duration=duration, text=seg.text, voice_name=seg.voice_name, timestamp=time.time())
-                    self.cache.add_entry(ce)
-                # Subtitle entry creation removed
                 current_time += duration
         else:
+            # Single voice mode: use slug-based filenames (includes text hash for cache)
             for seg in segments:
                 voice_cfg = voices_for_tts.get(seg.voice_name)
                 if voice_cfg is None:
@@ -179,50 +197,59 @@ class GenerationPipeline:
                         voice_cfg = self.config.voices.get("main")
                 if voice_cfg is None:
                     raise RuntimeError(f"No voice available for segment: {seg.voice_name}")
-                audio_path = audio_dir / f"segment_{seg.index:04d}.wav"
-                # Check cache
-                cache_entry = None
-                if self.cache:
-                    cache_entry = self.cache.get_entry(seg.index)
-                    if cache_entry and self.cache.validate_entry(cache_entry):
-                        generated_audio_paths.append(cache_entry.audio_path)
-                        duration = cache_entry.duration
-                        if duration:
-                            # Subtitle entry creation removed
-                            current_time += duration
-                        continue
-                # Perform generation; let exceptions propagate so we can fail fast
-                out_path, duration = self.audio_gen.generate(seg, voice_cfg, str(audio_path))
+                ref_text = voice_cfg.ref_text
+                if not ref_text:
+                    txt = os.path.splitext(voice_cfg.ref_audio)[0] + ".txt"
+                    if os.path.exists(txt):
+                        try:
+                            ref_text = open(txt, "r", encoding="utf-8").read().strip()
+                        except Exception:
+                            ref_text = ""
+                # Use slug-based path (includes text content hash for cache)
+                slug = slugify_text(seg.text, max_len=40)
+                if not slug:
+                    slug = hashlib.sha1(seg.text.encode('utf-8')).hexdigest()[:6]
+                base_path = audio_dir / f"main_{slug}.wav"
+                audio_path = base_path
+                # If file already exists, reuse it
+                if base_path.exists():
+                    audio_path = base_path
+                else:
+                    # Perform generation
+                    out_path, duration = self.audio_gen.generate(seg, voice_cfg, str(audio_path))
+                    audio_path = out_path
                 # Ensure a short silent tail + fade to avoid last-word artifacts
                 try:
-                    seg_audio = AudioSegment.from_wav(str(out_path))
+                    seg_audio = AudioSegment.from_wav(str(audio_path))
                     tail_ms = 150
                     fade_ms = 30 if len(seg_audio) > 2 * 30 else 0
                     seg_audio = seg_audio + AudioSegment.silent(duration=tail_ms)
                     if fade_ms:
                         seg_audio = seg_audio.fade_out(fade_ms)
-                    seg_audio.export(str(out_path), format="wav")
+                    seg_audio.export(str(audio_path), format="wav")
                     duration = len(seg_audio) / 1000.0
                 except Exception:
                     # keep duration returned by generator if postprocess fails
                     pass
-                generated_audio_paths.append(str(out_path))
-                # Persist in cache
-                if self.cache:
-                    ce = CacheEntry(segment_index=seg.index, audio_path=str(out_path), duration=duration, text=seg.text, voice_name=seg.voice_name, timestamp=time.time())
-                    self.cache.add_entry(ce)
-                # Subtitle entry creation removed
+                generated_audio_paths.append(str(audio_path))
+                per_segment_audio_paths.append(str(audio_path))
                 current_time += duration
 
-        # After processing all segments, save cache
-        if self.cache:
-            self.cache.save_cache(self.cache._cache if hasattr(self.cache, "_cache") else {})
-
-        # Concatenate audio and subtitles
+        # Concatenate audio per-segment to produce final audio, avoiding duplicate path issues
         final_audio = Path(self.config.output_dir) / "final_audio.wav"
         final_srt = Path(self.config.output_dir) / "final_output.srt"
-        if generated_audio_paths:
-            self.concater.concatenate_audio(generated_audio_paths, str(final_audio))
+        if per_segment_audio_paths:
+            from pydub import AudioSegment as _AS
+            combined = _AS.empty()
+            last_path = None
+            for p in per_segment_audio_paths:
+                if last_path is not None and p == last_path:
+                    # Insert a brief silence between identical audio blocks to
+                    # avoid abrupt repetition without changing overall duration logic
+                    combined += _AS.silent(duration=200)
+                combined += _AS.from_wav(p)
+                last_path = p
+            combined.export(str(final_audio), format="wav")
         # Subtitles generation removed; no SRT output
         final_srt = ""
         # Return final artifact paths (no subtitles)

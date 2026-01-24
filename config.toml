@@ -1,9 +1,7 @@
 input_article = "gen/speech.txt"
 output_dir = "gen/output"
-cache_dir = ".cache"
 model_name = "F5TTS_v1_Base"
 max_sentence_length = 200
-enable_cache = true
 
 # Default/main voice points to tender
 [voices.main]

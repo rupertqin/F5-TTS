@@ -19,15 +19,12 @@ class VoiceConfig:
 class Config:
     input_article: str
     output_dir: str
-    cache_dir: str = ".cache"
     max_sentence_length: int = 200
     model_name: str = "F5TTS_v1_Base"
     nfe_step: int = 32
     cfg_strength: float = 2.0
     speed: float = 1.0
     voices: Optional[Dict[str, VoiceConfig]] = None
-    enable_cache: bool = True
-    # subtitles: legacy option removed
 
     def __post_init__(self):
         if self.voices is None:
@@ -101,14 +98,12 @@ class ConfigManager:
         cfg = Config(
             input_article=data.get("input_article", "article.txt"),
             output_dir=data.get("output_dir", "output"),
-            cache_dir=data.get("cache_dir", ".cache"),
             max_sentence_length=data.get("max_sentence_length", 200),
             model_name=data.get("model_name", "F5-TTS"),
             nfe_step=data.get("nfe_step", 32),
             cfg_strength=data.get("cfg_strength", 2.0),
             speed=data.get("speed", 1.0),
             voices=voices,
-            enable_cache=data.get("enable_cache", True),
         )
         return cfg
 
@@ -133,14 +128,12 @@ class ConfigManager:
         return Config(
             input_article="article.txt",
             output_dir="output",
-            cache_dir=".cache",
             max_sentence_length=200,
             model_name="F5-TTS",
             nfe_step=32,
             cfg_strength=2.0,
             speed=1.0,
             voices=voices,
-            enable_cache=True,
         )
 
     @staticmethod
@@ -158,10 +151,6 @@ class ConfigManager:
         # output_dir
         if not config.output_dir:
             errors.append("output_dir path is empty")
-
-        # cache_dir
-        if not getattr(config, "cache_dir", None):
-            errors.append("cache_dir path is empty")
 
         # numeric validations
         if config.max_sentence_length <= 0:

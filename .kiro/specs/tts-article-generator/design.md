@@ -94,7 +94,6 @@ class Config:
     cfg_strength: float        # CFG强度
     speed: float               # 语速
     voices: Dict[str, VoiceConfig]  # 音色配置
-    enable_cache: bool         # 是否启用缓存
 
 class VoiceConfig:
     """音色配置"""
@@ -511,8 +510,6 @@ python -m tts_article_generator \
 # 基本配置
 input_article = "article.txt"
 output_dir = "output"
-cache_dir = ".cache"
-enable_cache = true
 
 # 文章切割配置
 max_sentence_length = 200

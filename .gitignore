@@ -171,5 +171,6 @@ cython_debug/
 #.idea/
 
 # gen
-gen/output/
-gen/speech.txt
+output/
+speech.txt
+.claude/

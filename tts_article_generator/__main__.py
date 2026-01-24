@@ -87,8 +87,6 @@ def main():
             config.input_article = "gen/speech.txt"
         elif Path("gen/article.txt").exists():
             config.input_article = "gen/article.txt"
-    # Simple resume flag: enable_cache in config toggling could be used, but we honor the flag here by forcing enable_cache
-    config.enable_cache = True if args.resume else config.enable_cache
     pipeline = GenerationPipeline(config)
     final_audio, final_srt = pipeline.run()
     print(f"Final audio: {final_audio}")
