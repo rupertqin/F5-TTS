@@ -9,6 +9,11 @@ enable_cache = true
 [voices.main]
 ref_audio = "voices/f-a/happy.wav"
 ref_text = ""
+speed = 0.9
+
+[voices.caixukun]
+ref_audio = "voices/caixukun.wav"
+ref_text = ""
 speed = 1.0
 
 # f-a voices
@@ -20,12 +25,12 @@ speed = 1.0
 [voices."happy"]
 ref_audio = "voices/f-a/happy.wav"
 ref_text = ""
-speed = 1.0
+speed = 0.8
 
 [voices."confused"]
 ref_audio = "voices/f-a/confused.wav"
 ref_text = ""
-speed = 1.0
+speed = 0.9
 
 [voices."sad"]
 ref_audio = "voices/f-a/sad.wav"
@@ -61,13 +66,13 @@ speed = 1.0
 [voices."wa"]
 ref_audio = "voices/f-b/wa.wav"
 ref_text = ""
-speed = 1.0
+speed = 1.1
 
 # f-c voices
-[voices."heihei"]
+[voices.heihei]
 ref_audio = "voices/f-c/heihei.wav"
 ref_text = ""
-speed = 1.0
+speed = 0.6
 
 [voices."xiaoshagua"]
 ref_audio = "voices/f-c/xiaoshagua.wav"
@@ -78,3 +83,5 @@ speed = 1.0
 ref_audio = "voices/f-c/shiya.wav"
 ref_text = ""
 speed = 1.0
+
+
