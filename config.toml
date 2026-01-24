@@ -7,7 +7,7 @@ enable_cache = true
 
 # Default/main voice points to tender
 [voices.main]
-ref_audio = "voices/f-a/happy.wav"
+ref_audio = "voices/nice/happy.wav"
 ref_text = ""
 speed = 0.9
 
@@ -97,5 +97,68 @@ speed = 0.9
 
 [voices.serena]
 ref_audio = "voices/serena.wav"
+ref_text = ""
+speed = 1.0
+
+
+# man
+[voices.man]
+ref_audio = "voices/man/normal.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."man.angry"]
+ref_audio = "voices/man/angry.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."man.happy"]
+ref_audio = "voices/man/happy.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."man.sad"]
+ref_audio = "voices/man/sad.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."man.surprise"]
+ref_audio = "voices/man/surprise.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."man.control"]
+ref_audio = "voices/man/control.wav"
+ref_text = ""
+speed = 1.0
+
+# vivian
+[voices.vivian]
+ref_audio = "voices/vivian/normal.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."vivian.angry"]
+ref_audio = "voices/vivian/angry.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."vivian.happy"]
+ref_audio = "voices/vivian/happy.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."vivian.sad"]
+ref_audio = "voices/vivian/sad.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."vivian.surprise"]
+ref_audio = "voices/vivian/surprise.wav"
+ref_text = ""
+speed = 1.0
+
+[voices."vivian.control"]
+ref_audio = "voices/vivian/control.wav"
 ref_text = ""
 speed = 1.0
