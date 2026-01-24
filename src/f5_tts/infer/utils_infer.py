@@ -345,6 +345,17 @@ def preprocess_ref_audio_text(ref_audio_orig, ref_text, show_info=print):
 
         aseg = remove_silence_edges(aseg) + AudioSegment.silent(duration=50)
         aseg.export(temp_path, format="wav")
+        # Normalize loudness: boost/reflect to a target loudness (≈ -18 dBFS)
+        # This helps align reference loudness across samples without heavy amplification of noise.
+        # try:
+        #     target_dBFS = -18.0
+        #     delta_db = target_dBFS - aseg.dBFS
+        #     # apply gain to the whole segment
+        #     aseg = aseg.apply_gain(delta_db)
+        #     aseg.export(temp_path, format="wav")
+        # except Exception:
+        #     # If anything goes wrong, keep the original exported temp_path
+        #     pass
         ref_audio = temp_path
 
         # Cache the processed reference audio
