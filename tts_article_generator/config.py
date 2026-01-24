@@ -96,7 +96,7 @@ class ConfigManager:
                         pass
             voices[key] = voice
         cfg = Config(
-            input_article=data.get("input_article", "article.txt"),
+            input_article=data.get("input_article", "speech.txt"),
             output_dir=data.get("output_dir", "output"),
             max_sentence_length=data.get("max_sentence_length", 200),
             model_name=data.get("model_name", "F5-TTS"),
@@ -126,7 +126,7 @@ class ConfigManager:
                         except Exception:
                             pass
         return Config(
-            input_article="article.txt",
+            input_article="speech.txt",
             output_dir="output",
             max_sentence_length=200,
             model_name="F5-TTS",

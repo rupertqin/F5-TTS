@@ -1,5 +1,5 @@
-input_article = "gen/speech.txt"
-output_dir = "gen/output"
+input_article = "speech.txt"
+output_dir = "output"
 model_name = "F5TTS_v1_Base"
 max_sentence_length = 200
 
