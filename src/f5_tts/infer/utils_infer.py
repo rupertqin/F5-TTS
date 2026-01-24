@@ -348,7 +348,7 @@ def preprocess_ref_audio_text(ref_audio_orig, ref_text, show_info=print):
         # Normalize loudness: boost/reflect to a target loudness (≈ -18 dBFS)
         # This helps align reference loudness across samples without heavy amplification of noise.
         # try:
-        #     target_dBFS = -18.0
+        #     target_dBFS = -22.0
         #     delta_db = target_dBFS - aseg.dBFS
         #     # apply gain to the whole segment
         #     aseg = aseg.apply_gain(delta_db)
