@@ -27,8 +27,7 @@ class Config:
     speed: float = 1.0
     voices: Optional[Dict[str, VoiceConfig]] = None
     enable_cache: bool = True
-    # Maximum number of characters per line in subtitles (ignoring punctuation)
-    subtitle_max_width: int = 15
+    # subtitles: legacy option removed
 
     def __post_init__(self):
         if self.voices is None:
@@ -110,7 +109,6 @@ class ConfigManager:
             speed=data.get("speed", 1.0),
             voices=voices,
             enable_cache=data.get("enable_cache", True),
-            subtitle_max_width=data.get("subtitle_max_width", 15),
         )
         return cfg
 
@@ -143,7 +141,6 @@ class ConfigManager:
             speed=1.0,
             voices=voices,
             enable_cache=True,
-            subtitle_max_width=15,
         )
 
     @staticmethod

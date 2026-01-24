@@ -9,7 +9,7 @@ from typing import List, Tuple, Dict
 from .splitter import ArticleSplitter, SentenceSegment
 from .cache import CacheManager, CacheEntry
 from .audio_generator import AudioGenerator, VoiceConfig  # type: ignore
-from .subtitle_generator import SubtitleGenerator, SubtitleEntry
+# Subtitle feature removed: no per-line subtitle generation
 from .concatenator import FileConcatenator
 from .config import Config, VoiceConfig as VoiceCfg
 from pydub import AudioSegment
@@ -22,7 +22,6 @@ class GenerationPipeline:
         # Defer AudioGenerator creation until we know which voices are used in
         # the input article. This avoids loading or preparing unused voices.
         self.audio_gen = None
-        self.subtitle_gen = SubtitleGenerator()
         self.concater = FileConcatenator()
         self.voices = config.voices  # Dict[str, VoiceCfg]
         # Prepare task id and cache
@@ -35,15 +34,15 @@ class GenerationPipeline:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
 
-    def _process_segments(self, article_text: str) -> Tuple[List[SentenceSegment], List[SubtitleEntry]]:
+    def _process_segments(self, article_text: str) -> Tuple[List[SentenceSegment], List[object]]:
         segments = self.splitter.split(article_text)
-        # Build placeholder subtitles list; actual times set after durations computed
-        entries: List[SubtitleEntry] = []
+        # Placeholder subtitles list removed
+        entries: List[object] = []
         current_start = 0.0
         for seg in segments:
             # We'll fill durations later; for now, use 0 as placeholder
             duration = 0.0
-            entries.append(SubtitleEntry(index=seg.index+1, start_time=current_start, end_time=current_start+duration, text=seg.text))
+            # Subtitle entry creation removed
             current_start += duration
         return segments, entries
 
@@ -107,13 +106,11 @@ class GenerationPipeline:
 
         # Output directories
         audio_dir = Path(self.config.output_dir) / "audio"
-        srt_dir = Path(self.config.output_dir) / "subs"
         audio_dir.mkdir(parents=True, exist_ok=True)
-        srt_dir.mkdir(parents=True, exist_ok=True)
 
         # Prepare to generate/collect audio files
         generated_audio_paths: List[str] = []
-        entries: List[SubtitleEntry] = []
+        entries: List[object] = []
         current_time = 0.0
         # If multiple different voices are referenced, use a multi-speech path:
         unique_voices = sorted({s.voice_name for s in segments if s.voice_name})
@@ -175,8 +172,7 @@ class GenerationPipeline:
                 if self.cache:
                     ce = CacheEntry(segment_index=seg.index, audio_path=str(audio_path), duration=duration, text=seg.text, voice_name=seg.voice_name, timestamp=time.time())
                     self.cache.add_entry(ce)
-                ent = SubtitleEntry(index=seg.index+1, start_time=current_time, end_time=current_time+duration, text=seg.text)
-                entries.append(ent)
+                # Subtitle entry creation removed
                 current_time += duration
         else:
             for seg in segments:
@@ -184,7 +180,7 @@ class GenerationPipeline:
                 if voice_cfg is None:
                     # fallback to tender default
                     voice_cfg = voices_for_tts.get("f-a/tender")
-                    if voice_cfg is None and self.config.voices:
+                if voice_cfg is None and self.config.voices:
                         # final fallback to config main entry
                         voice_cfg = self.config.voices.get("main")
                 if voice_cfg is None:
@@ -198,8 +194,7 @@ class GenerationPipeline:
                         generated_audio_paths.append(cache_entry.audio_path)
                         duration = cache_entry.duration
                         if duration:
-                            ent = SubtitleEntry(index=seg.index+1, start_time=current_time, end_time=current_time+duration, text=seg.text)
-                            entries.append(ent)
+                            # Subtitle entry creation removed
                             current_time += duration
                         continue
                 # Perform generation; let exceptions propagate so we can fail fast
@@ -222,8 +217,7 @@ class GenerationPipeline:
                 if self.cache:
                     ce = CacheEntry(segment_index=seg.index, audio_path=str(out_path), duration=duration, text=seg.text, voice_name=seg.voice_name, timestamp=time.time())
                     self.cache.add_entry(ce)
-                ent = SubtitleEntry(index=seg.index+1, start_time=current_time, end_time=current_time+duration, text=seg.text)
-                entries.append(ent)
+                # Subtitle entry creation removed
                 current_time += duration
 
         # After processing all segments, save cache
@@ -235,9 +229,9 @@ class GenerationPipeline:
         final_srt = Path(self.config.output_dir) / "final_output.srt"
         if generated_audio_paths:
             self.concater.concatenate_audio(generated_audio_paths, str(final_audio))
-        # Write final subtitles with configurable width
-        self.subtitle_gen.generate_srt(entries, str(final_srt), max_chars=self.config.subtitle_max_width)
-        # Return final artifact paths
+        # Subtitles generation removed; no SRT output
+        final_srt = ""
+        # Return final artifact paths (no subtitles)
         return str(final_audio), str(final_srt)
 
     # Helpers used by CLI/tests
