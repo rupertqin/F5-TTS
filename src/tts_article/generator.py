@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import argparse
+from pathlib import Path
 from typing import Tuple
 from pydub import AudioSegment
 
@@ -107,3 +109,82 @@ class AudioGenerator:
         import soundfile as sf
         with sf.SoundFile(audio_path) as f:
             return len(f) / f.samplerate
+
+
+# CLI entry point
+def _valid_phs(v: str | None) -> bool:
+    if v is None:
+        return True
+    if v == "random":
+        return True
+    try:
+        i = int(v)
+        return 0 <= i <= 4294967295
+    except Exception:
+        return False
+
+# Ensure PYTHONHASHSEED is valid very early
+phs = os.environ.get("PYTHONHASHSEED")
+if not _valid_phs(phs):
+    if os.environ.get("_PHSE_REEXEC") != "1":
+        print(f"⚠️  Invalid PYTHONHASHSEED='{phs}', re-execing with 'random' to avoid runtime crash.")
+        os.environ["PYTHONHASHSEED"] = "random"
+        os.environ["_PHSE_REEXEC"] = "1"
+        import sys
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+    else:
+        print(f"⚠️  Invalid PYTHONHASHSEED='{phs}', forcing 'random' and continuing.")
+        os.environ["PYTHONHASHSEED"] = "random"
+
+# Limit threaded BLAS/OpenMP usage
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+try:
+    import multiprocessing
+    try:
+        multiprocessing.set_start_method('spawn')
+    except RuntimeError:
+        pass
+except Exception:
+    pass
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description="TTS Article Generator - Multi-speech pipeline")
+    parser.add_argument("--config", help="Path to TOML config file", default=None)
+    parser.add_argument("--input", help="Input article file path", default=None)
+    parser.add_argument("--output", help="Output directory", default=None)
+    parser.add_argument("--workers", type=int, default=4, help="Number of parallel workers (default: 4)")
+    parser.add_argument("--verbose", help="Verbose logging", action="store_true")
+    return parser.parse_args()
+
+
+def main():
+    from .config import ConfigManager
+    from .pipeline import GenerationPipeline
+
+    args = parse_arguments()
+    # Load config
+    if args.config:
+        config = ConfigManager.load_config(args.config)
+    else:
+        if Path("config.toml").exists():
+            config = ConfigManager.load_config("config.toml")
+        else:
+            config = ConfigManager.get_default_config()
+    if args.input:
+        config.input_article = args.input
+    if args.output:
+        config.output_dir = args.output
+    # Default article source: use speech.txt in current directory
+    if not args.input and not Path("speech.txt").exists():
+        raise FileNotFoundError("speech.txt not found in current directory")
+    pipeline = GenerationPipeline(config, workers=args.workers)
+    final_audio, final_srt = pipeline.run()
+    print(f"Final audio: {final_audio}")
+    print(f"Final subtitles: {final_srt}")
+
+
+if __name__ == "__main__":
+    main()

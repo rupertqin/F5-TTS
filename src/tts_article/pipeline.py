@@ -9,7 +9,7 @@ from typing import List, Tuple, Dict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from .splitter import ArticleSplitter, SentenceSegment
-from .audio_generator import AudioGenerator, VoiceConfig  # type: ignore
+from .generator import AudioGenerator, VoiceConfig  # type: ignore
 from .concatenator import FileConcatenator
 from .config import Config, VoiceConfig as VoiceCfg
 import re
