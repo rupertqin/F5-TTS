@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import tempfile
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import List, Tuple, Dict
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -104,8 +106,11 @@ class GenerationPipeline:
         except Exception:
             return len(AudioSegment.from_wav(audio_path)) / 1000.0
 
-    def _generate_segment(self, seg: SentenceSegment, speech_types: Dict[str, Tuple[str, str, float]], audio_dir: Path) -> Tuple[int, str, float]:
-        """Generate audio for a single segment (runs in worker thread)."""
+    def _generate_segment(self, seg: SentenceSegment, speech_types: Dict[str, Tuple[str, str, float]], audio_dir: Path) -> Tuple[int, str, float, str]:
+        """Generate audio for a single segment (runs in worker thread).
+
+        Returns: (index, audio_path, duration, original_text)
+        """
         ref_audio, ref_text, v_speed = speech_types.get(seg.voice_name, speech_types.get("main"))
 
         # Get voice-level parameters (override global if set)
@@ -119,7 +124,7 @@ class GenerationPipeline:
 
         if audio_path.exists():
             duration = self._postprocess_audio(str(audio_path))
-            return seg.index, str(audio_path), duration
+            return seg.index, str(audio_path), duration, seg.text
 
         # Generate with temporary file to avoid conflicts
         with tempfile.NamedTemporaryFile(suffix=".wav", dir=audio_dir, delete=False) as tmp:
@@ -144,7 +149,8 @@ class GenerationPipeline:
             # Rename to final path
             os.rename(tmp_path, str(audio_path))
             duration = self._postprocess_audio(str(audio_path))
-            return seg.index, str(audio_path), duration
+            # Return: index, path, duration, original_text
+            return seg.index, str(audio_path), duration, seg.text
         except Exception:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
@@ -208,7 +214,8 @@ class GenerationPipeline:
             default_ref = list(speech_types.values())[0]
 
         # Generate all segments
-        index_to_audio: Dict[int, Tuple[str, float]] = {}
+        # Collect segment metadata: index -> (path, duration, text, voice_name)
+        index_to_audio: Dict[int, Tuple[str, float, str, str]] = {}
 
         if use_multispeech and len(segments) > 1:
             # Parallel generation for multi-voice mode
@@ -220,31 +227,77 @@ class GenerationPipeline:
                 for future in as_completed(futures):
                     seg = futures[future]
                     try:
-                        idx, path, duration = future.result()
-                        index_to_audio[idx] = (path, duration)
+                        idx, path, duration, text = future.result()
+                        index_to_audio[idx] = (path, duration, text, seg.voice_name or "main")
                     except Exception as e:
                         print(f"Error generating segment {seg.index}: {e}")
                         raise
         else:
             # Sequential for single voice or single segment
             for seg in segments:
-                idx, path, duration = self._generate_segment(seg, speech_types or {"main": default_ref}, audio_dir)
-                index_to_audio[idx] = (path, duration)
+                idx, path, duration, text = self._generate_segment(seg, speech_types or {"main": default_ref}, audio_dir)
+                index_to_audio[idx] = (path, duration, text, seg.voice_name or "main")
 
         # Sort by index to maintain order
-        per_segment_audio_paths = [index_to_audio[i][0] for i in sorted(index_to_audio.keys())]
+        sorted_indices = sorted(index_to_audio.keys())
+        per_segment_audio_paths = [index_to_audio[i][0] for i in sorted_indices]
 
-        # Concatenate all audio
+        # Concatenate all audio and build metadata
         final_audio = Path(self.config.output_dir) / "final_audio.wav"
+
+        # Build segment metadata with timing info
+        segments_metadata: List[Dict] = []
+        current_time = 0.0
+
         if per_segment_audio_paths:
             from pydub import AudioSegment as _AS
             combined = _AS.empty()
             last_path = None
-            for p in per_segment_audio_paths:
-                if last_path is not None and p == last_path:
+
+            for idx in sorted_indices:
+                path, duration, text, voice_name = index_to_audio[idx]
+                start_time = current_time
+                end_time = current_time + duration
+
+                # Add to combined audio
+                if last_path is not None and path == last_path:
                     combined += _AS.silent(duration=200)
-                combined += _AS.from_wav(p)
-                last_path = p
+                    current_time += 0.2  # Add 200ms silence gap
+                    end_time = current_time
+
+                combined += _AS.from_wav(path)
+                last_path = path
+
+                # Build segment metadata
+                segments_metadata.append({
+                    "index": idx,
+                    "voice": voice_name,
+                    "text": text,
+                    "start_time": round(start_time, 3),
+                    "end_time": round(end_time, 3),
+                    "duration": round(duration, 3),
+                    "audio_file": Path(path).name,
+                })
+
+                current_time += duration
+
             combined.export(str(final_audio), format="wav")
+
+        # Generate metadata JSON file
+        metadata = {
+            "source_file": self.config.input_article,
+            "output_audio": "final_audio.wav",
+            "total_duration": round(current_time, 3),
+            "segment_count": len(segments_metadata),
+            "created_at": datetime.now().isoformat(),
+            "model": self.config.model_name,
+            "segments": segments_metadata,
+        }
+
+        metadata_path = Path(self.config.output_dir) / "metadata.json"
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump(metadata, f, ensure_ascii=False, indent=2)
+
+        print(f"Metadata saved to: {metadata_path}")
 
         return str(final_audio), ""
