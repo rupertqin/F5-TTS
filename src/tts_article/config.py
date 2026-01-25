@@ -29,6 +29,8 @@ class Config:
     speed: float = 1.0
     target_rms: float = 0.1
     voices: Optional[Dict[str, VoiceConfig]] = None
+    # Global polyphone overrides (applies to all voices)
+    polyphone_dict: Optional[Dict[str, str]] = None
 
     def __post_init__(self):
         if self.voices is None:
@@ -102,6 +104,9 @@ class ConfigManager:
                     except Exception:
                         pass
             voices[key] = voice
+        # Load global polyphone_dict
+        polyphone_data = data.get("polyphone_dict")
+        polyphone_dict = polyphone_data if isinstance(polyphone_data, dict) else None
         cfg = Config(
             input_article=data.get("input_article", "speech.txt"),
             output_dir=data.get("output_dir", "output"),
@@ -112,6 +117,7 @@ class ConfigManager:
             speed=data.get("speed", 1.0),
             target_rms=data.get("target_rms", 0.1),
             voices=voices,
+            polyphone_dict=polyphone_dict,
         )
         return cfg
 

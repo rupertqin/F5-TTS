@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import json
 import tempfile
 import threading
 from pathlib import Path
@@ -51,6 +50,21 @@ def _get_ref_text(ref_audio: str, voice_cfg: VoiceCfg | None = None) -> str:
     return ref_text or ""
 
 
+def _apply_polyphone_replacements(text: str, polyphone_dict: Dict[str, str] | None) -> str:
+    """Apply polyphone replacements using homophone characters.
+
+    Example: "偏好" -> "偏浩" (hao4 instead of hao3)
+    """
+    if not polyphone_dict:
+        return text
+
+    result = text
+    for word, replacement in polyphone_dict.items():
+        if word in result:
+            result = result.replace(word, replacement)
+    return result
+
+
 class GenerationPipeline:
     def __init__(self, config: Config, workers: int = 4):
         self.config = config
@@ -93,11 +107,6 @@ class GenerationPipeline:
     def _generate_segment(self, seg: SentenceSegment, speech_types: Dict[str, Tuple[str, str, float]], audio_dir: Path) -> Tuple[int, str, float]:
         """Generate audio for a single segment (runs in worker thread)."""
         ref_audio, ref_text, v_speed = speech_types.get(seg.voice_name, speech_types.get("main"))
-        audio_path = self._get_audio_path(audio_dir, seg.voice_name, seg.text)
-
-        if audio_path.exists():
-            duration = self._postprocess_audio(str(audio_path))
-            return seg.index, str(audio_path), duration
 
         # Get voice-level parameters (override global if set)
         voice_cfg = self.voices.get(seg.voice_name) if self.voices else None
@@ -105,17 +114,27 @@ class GenerationPipeline:
         cfg_strength = voice_cfg.cfg_strength if voice_cfg and voice_cfg.cfg_strength else self.config.cfg_strength
         target_rms = voice_cfg.target_rms if voice_cfg and voice_cfg.target_rms else self.config.target_rms
 
+        # Cache key based on original text
+        audio_path = self._get_audio_path(audio_dir, seg.voice_name, seg.text)
+
+        if audio_path.exists():
+            duration = self._postprocess_audio(str(audio_path))
+            return seg.index, str(audio_path), duration
+
         # Generate with temporary file to avoid conflicts
         with tempfile.NamedTemporaryFile(suffix=".wav", dir=audio_dir, delete=False) as tmp:
             tmp_path = tmp.name
 
         try:
+            # Apply polyphone replacements (homophone substitution)
+            gen_text = _apply_polyphone_replacements(seg.text, self.config.polyphone_dict)
+
             # Use lock for GPU inference on Metal (not thread-safe)
             with self._gpu_lock:
                 wav, sr, spec = self.audio_gen._tts.infer(
                     ref_file=ref_audio,
                     ref_text=ref_text,
-                    gen_text=seg.text,
+                    gen_text=gen_text,
                     file_wave=tmp_path,
                     nfe_step=nfe_step,
                     cfg_strength=cfg_strength,
@@ -161,6 +180,7 @@ class GenerationPipeline:
         )
         self.audio_gen = AudioGenerator(tts_config)
         self.audio_gen.initialize_model()
+
         if self.audio_gen._tts is None:
             raise RuntimeError("Failed to initialize TTS model; aborting generation.")
 
