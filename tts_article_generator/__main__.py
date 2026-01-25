@@ -60,6 +60,7 @@ def parse_arguments():
     parser.add_argument("--config", help="Path to TOML config file", default=None)
     parser.add_argument("--input", help="Input article file path", default=None)
     parser.add_argument("--output", help="Output directory", default=None)
+    parser.add_argument("--workers", type=int, default=4, help="Number of parallel workers (default: 4)")
     parser.add_argument("--verbose", help="Verbose logging", action="store_true")
     return parser.parse_args()
 
@@ -83,7 +84,7 @@ def main():
     # Default article source: use speech.txt in current directory
     if not args.input and not Path("speech.txt").exists():
         raise FileNotFoundError("speech.txt not found in current directory")
-    pipeline = GenerationPipeline(config)
+    pipeline = GenerationPipeline(config, workers=args.workers)
     final_audio, final_srt = pipeline.run()
     print(f"Final audio: {final_audio}")
     print(f"Final subtitles: {final_srt}")
