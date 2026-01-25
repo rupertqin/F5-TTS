@@ -92,12 +92,18 @@ class GenerationPipeline:
 
     def _generate_segment(self, seg: SentenceSegment, speech_types: Dict[str, Tuple[str, str, float]], audio_dir: Path) -> Tuple[int, str, float]:
         """Generate audio for a single segment (runs in worker thread)."""
-        ref_audio, ref_text, v_speed = speech_types.get(seg.voice_name, speech_types.get("f-a/tender"))
+        ref_audio, ref_text, v_speed = speech_types.get(seg.voice_name, speech_types.get("main"))
         audio_path = self._get_audio_path(audio_dir, seg.voice_name, seg.text)
 
         if audio_path.exists():
             duration = self._postprocess_audio(str(audio_path))
             return seg.index, str(audio_path), duration
+
+        # Get voice-level parameters (override global if set)
+        voice_cfg = self.voices.get(seg.voice_name) if self.voices else None
+        nfe_step = voice_cfg.nfe_step if voice_cfg and voice_cfg.nfe_step else self.config.nfe_step
+        cfg_strength = voice_cfg.cfg_strength if voice_cfg and voice_cfg.cfg_strength else self.config.cfg_strength
+        target_rms = voice_cfg.target_rms if voice_cfg and voice_cfg.target_rms else self.config.target_rms
 
         # Generate with temporary file to avoid conflicts
         with tempfile.NamedTemporaryFile(suffix=".wav", dir=audio_dir, delete=False) as tmp:
@@ -111,9 +117,10 @@ class GenerationPipeline:
                     ref_text=ref_text,
                     gen_text=seg.text,
                     file_wave=tmp_path,
-                    nfe_step=self.config.nfe_step,
-                    cfg_strength=self.config.cfg_strength,
+                    nfe_step=nfe_step,
+                    cfg_strength=cfg_strength,
                     speed=v_speed,
+                    target_rms=target_rms,
                 )
             # Rename to final path
             os.rename(tmp_path, str(audio_path))
@@ -169,14 +176,14 @@ class GenerationPipeline:
         for v in unique_voices:
             vc = (self.config.voices or {}).get(v)
             if vc is None:
-                vc = (self.config.voices or {}).get("f-a/tender") or (self.config.voices or {}).get("main")
+                vc = (self.config.voices or {}).get("main")
             if vc is None:
                 raise RuntimeError(f"No reference audio configured for voice '{v}'")
             ref_text = _get_ref_text(vc.ref_audio, vc)
             speech_types[v] = (vc.ref_audio, ref_text, vc.speed if vc.speed is not None else self.config.speed)
 
         # Handle single voice fallback for missing voices
-        default_ref = speech_types.get("f-a/tender") or speech_types.get("main")
+        default_ref = speech_types.get("main")
         if default_ref is None and speech_types:
             default_ref = list(speech_types.values())[0]
 

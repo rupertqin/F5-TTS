@@ -3,6 +3,12 @@ output_dir = "output"
 model_name = "F5TTS_v1_Base"
 max_sentence_length = 200
 
+# Global generation parameters
+nfe_step = 32          # Flow matching steps, range 16-64 (16=fast/low quality, 32=default, 64=slow/high quality)
+cfg_strength = 2.0     # Voice similarity strength, range 1.0-4.0 (1.0=different, 2.0=default, 4.0=very similar)
+speed = 1.0            # Speech speed, range 0.5-2.0 (0.5=slow, 1.0=normal, 2.0=fast)
+target_rms = 0.1       # Audio volume, range 0.05-0.2 (0.05=quiet, 0.1=default, 0.2=loud)
+
 # Default/main voice points to tender
 [voices.main]
 ref_audio = "voices/nice/happy.wav"

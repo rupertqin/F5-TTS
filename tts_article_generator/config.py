@@ -13,6 +13,9 @@ class VoiceConfig:
     ref_audio: str
     ref_text: str = ""
     speed: Optional[float] = None
+    nfe_step: Optional[int] = None
+    cfg_strength: Optional[float] = None
+    target_rms: Optional[float] = None
 
 
 @dataclass
@@ -24,6 +27,7 @@ class Config:
     nfe_step: int = 32
     cfg_strength: float = 2.0
     speed: float = 1.0
+    target_rms: float = 0.1
     voices: Optional[Dict[str, VoiceConfig]] = None
 
     def __post_init__(self):
@@ -81,6 +85,9 @@ class ConfigManager:
                 ref_audio=v.get("ref_audio", ""),
                 ref_text=v.get("ref_text", ""),
                 speed=v.get("speed", None),
+                nfe_step=v.get("nfe_step", None),
+                cfg_strength=v.get("cfg_strength", None),
+                target_rms=v.get("target_rms", None),
             )
             # Auto-fill ref_text from a companion .txt file next to the audio if not provided
             if not voice.ref_text and voice.ref_audio:
@@ -103,6 +110,7 @@ class ConfigManager:
             nfe_step=data.get("nfe_step", 32),
             cfg_strength=data.get("cfg_strength", 2.0),
             speed=data.get("speed", 1.0),
+            target_rms=data.get("target_rms", 0.1),
             voices=voices,
         )
         return cfg
