@@ -99,12 +99,14 @@ class GenerationPipeline:
             return f.read()
 
     def _get_audio_path(self, audio_dir: Path, voice_name: str | None, text: str) -> Path:
-        """Generate deterministic path for audio file based on text content."""
-        slug = slugify_text(text, max_len=40)
-        if not slug:
-            slug = hashlib.sha1(text.encode('utf-8')).hexdigest()[:6]
+        """Generate deterministic path for audio file based on text content.
+
+        Uses SHA1 hash to ensure cache hits even when text changes slightly.
+        """
+        # Use full SHA1 hash (40 chars) for reliable caching
+        hash_suffix = hashlib.sha1(text.encode('utf-8')).hexdigest()
         voice = voice_name or "main"
-        return audio_dir / f"{voice}_{slug}.wav"
+        return audio_dir / f"{voice}_{hash_suffix}.wav"
 
     def _postprocess_audio(self, audio_path: str) -> float:
         """Add silence tail and fade out to audio file."""
