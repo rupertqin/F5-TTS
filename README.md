@@ -1,181 +1,242 @@
-# 🎙️ TTS Article Generator
+# TTS Article Generator
 
-基于F5-TTS的多音色文本转语音生成器。
+基于 F5-TTS 的多音色文本转语音生成器，支持在文章中使用多个不同的音色。
 
-## ✨ 特点
+## 功能特点
 
-- 🎭 **多音色支持** - 在一篇文章中使用多个不同的音色
-- 📝 **简单格式** - 使用JSON标记指定音色和参数
-- 🚀 **一键生成** - 无需复杂的命令行参数
-- 🎵 **高质量** - 基于F5-TTS的先进语音合成技术
+- **多音色支持** - 使用 `[voice_name]` 标记切换不同音色
+- **并发生成** - 支持并行生成多个音频片段
+- **多音字处理** - 支持配置同音字替换，解决多音字读音问题
+- **CLI 命令** - 一键生成 `tts-article`
 
-## 🚀 快速开始
+## 快速开始
 
 ### 1. 编辑文本
 
-打开 `gen/speech.txt`：
+编辑 `speech.txt`：
 
-```
-{"name": "f-a/happy", "seed": -1, "speed": 1} 你好！今天天气真好。
+```text
+[main]
+这是主声音的文本。
 
-{"name": "f-b/哇", "seed": -1, "speed": 1} 哇，真的很不错呢！
+[vivian]
+这是 vivian 的文本。
 
-{"name": "f-c/嘿嘿", "seed": -1, "speed": 1.1} 嘿嘿，我们出去玩吧。
+[man]
+这是男性的文本。
 ```
 
 ### 2. 运行生成
 
 ```bash
-python generate.py
+tts-article
+```
+
+或者使用 Python：
+
+```bash
+python -m tts_article
 ```
 
 ### 3. 获取音频
 
-生成的音频在 `gen/output/` 目录！
+生成的音频在 `output/` 目录：
+- `output/audio/*.wav` - 各个片段
+- `output/final_audio.wav` - 合并后的完整音频
 
-## 📋 可用音色
+## 配置说明
 
-### f-a（情感音色）
+### 配置文件 (config.toml)
 
-- `f-a/angry` - 生气
-- `f-a/confused` - 困惑
-- `f-a/fear` - 恐惧
-- `f-a/happy` - 开心
-- `f-a/sad` - 悲伤
-- `f-a/tender` - 温柔
+```toml
+input_article = "speech.txt"      # 输入文本文件
+output_dir = "output"             # 输出目录
+model_name = "F5TTS_v1_Base"      # 模型名称
+max_sentence_length = 200         # 最大句子长度
 
-### f-b（语气词）
+# 生成参数
+nfe_step = 32                     # Flow matching 步数 (16-64)
+cfg_strength = 2.0                # 音色相似度 (1.0-4.0)
+speed = 1.0                       # 语速 (0.5-2.0)
+target_rms = 0.1                  # 音量 (0.05-0.2)
 
-- `f-b/哇` - 惊叹
-- `f-b/哼` - 不满
-- `f-b/好呀` - 同意
+# 多音字处理（使用同音字替换）
+polyphone_dict = { "偏好" = "偏浩", "行长" = "航长" }
 
-### f-c（口语化）
+# 音色配置
+[voices.main]
+ref_audio = "voices/nice/happy.wav"
+speed = 0.9
 
-- `f-c/嘿嘿` - 调皮
-- `f-c/小傻瓜` - 亲昵
-- `f-c/是呀` - 肯定
+[voices.vivian]
+ref_audio = "voices/vivian/normal.wav"
+speed = 1.0
+```
 
-## 📝 格式说明
+### 语音标记格式
 
-每段文本前添加JSON配置：
+在 `speech.txt` 中使用 `[voice_name]` 切换音色：
 
-```json
-{
-  "name": "f-a/happy", // 音色路径
-  "seed": -1, // 随机种子（-1=随机）
-  "speed": 1.0 // 语速（1.0=正常）
+```text
+[caixukun]
+我跟我闺蜜看电影就特别有画面感。
+
+[man]
+由于男性作为权力的"生产者"，他们更信奉力量本身。
+
+[vivian.happy]
+她只需要回到一个正确的时间点。
+```
+
+## 可用音色
+
+### nice 音色
+| 音色 | 路径 | 语速 |
+|------|------|------|
+| main | voices/nice/happy.wav | 0.9 |
+| caixukun | voices/nice/caixukun.wav | 1.0 |
+| guimi | voices/nice/guimi.wav | 1.0 |
+| happy | voices/nice/happy.wav | 0.9 |
+
+### f-a 情感音色
+| 音色 | 路径 | 语速 |
+|------|------|------|
+| tender | voices/f-a/tender.wav | 1.0 |
+| confused | voices/f-a/confused.wav | 0.9 |
+| sad | voices/f-a/sad.wav | 1.0 |
+| friendly | voices/f-a/friendly.wav | 1.0 |
+| angry | voices/f-a/angry.wav | 1.0 |
+| fear | voices/f-a/fear.wav | 1.0 |
+
+### f-b 语气词
+| 音色 | 路径 | 语速 |
+|------|------|------|
+| haoya | voices/f-b/haoya.wav | 1.0 |
+| heng | voices/f-b/heng.wav | 1.0 |
+| wa | voices/f-b/wa.wav | 1.1 |
+
+### f-c 口语化
+| 音色 | 路径 | 语速 |
+|------|------|------|
+| heihei | voices/f-c/heihei.wav | 0.6 |
+| xiaoshagua | voices/f-c/xiaoshagua.wav | 1.0 |
+| shiya | voices/f-c/shiya.wav | 1.0 |
+
+### man 音色
+| 音色 | 路径 | 语速 |
+|------|------|------|
+| man | voices/man/normal.wav | 1.1 |
+| man.angry | voices/man/angry.wav | 1.0 |
+| man.happy | voices/man/happy.wav | 1.0 |
+| man.sad | voices/man/sad.wav | 1.0 |
+| man.surprise | voices/man/surprise.wav | 1.0 |
+| man.control | voices/man/control.wav | 1.0 |
+
+### vivian 音色
+| 音色 | 路径 | 语速 |
+|------|------|------|
+| vivian | voices/vivian/normal.wav | 1.0 |
+| vivian.angry | voices/vivian/angry.wav | 1.0 |
+| vivian.happy | voices/vivian/happy.wav | 1.0 |
+| vivian.sad | voices/vivian/sad.wav | 1.0 |
+| vivian.surprise | voices/vivian/surprise.wav | 1.0 |
+| vivian.control | voices/vivian/control.wav | 1.0 |
+
+## 参数说明
+
+### 全局参数
+
+| 参数 | 默认值 | 范围 | 说明 |
+|------|--------|------|------|
+| `nfe_step` | 32 | 16-64 | Flow matching 步数，越高越慢但质量越好 |
+| `cfg_strength` | 2.0 | 1.0-4.0 | 音色相似度，越高越接近参考音色 |
+| `speed` | 1.0 | 0.5-2.0 | 语速 |
+| `target_rms` | 0.1 | 0.05-0.2 | 音量 |
+
+### 音色参数
+
+| 参数 | 说明 |
+|------|------|
+| `ref_audio` | 参考音频路径 |
+| `ref_text` | 参考音频对应的文本（可选，从同名 .txt 文件读取） |
+| `speed` | 该音色的语速（覆盖全局设置） |
+| `nfe_step` | 该音色的步数（覆盖全局设置） |
+| `cfg_strength` | 该音色的相似度（覆盖全局设置） |
+| `target_rms` | 该音色的音量（覆盖全局设置） |
+
+## 多音字处理
+
+由于 F5-TTS 的拼音转换可能不准确，可以通过配置同音字来解决：
+
+```toml
+polyphone_dict = {
+    "偏好" = "偏浩",   # hao3 -> hao4
+    "行长" = "航长",   # hang2zhang3 -> hang2zhang3
 }
 ```
 
-## 📚 文档
+原理：将多音字替换为同音字，让 F5-TTS 读出正确的发音。
 
-- **[START_HERE.md](START_HERE.md)** - 快速开始指南
-- **[USAGE.md](USAGE.md)** - 详细使用说明
-- **[VOICES.md](VOICES.md)** - 所有音色列表
-- **[SIMPLE_VERSION_COMPLETE.md](SIMPLE_VERSION_COMPLETE.md)** - 完整文档
-
-## 💡 示例
-
-### 对话场景
-
-```
-{"name": "f-a/happy", "seed": -1, "speed": 1} 你好！今天天气真好。
-
-{"name": "f-b/好呀", "seed": -1, "speed": 1} 是啊，我们出去走走吧。
-
-{"name": "f-a/confused", "seed": -1, "speed": 1} 去哪里呢？
-
-{"name": "f-c/嘿嘿", "seed": -1, "speed": 1.1} 嘿嘿，我知道一个好地方。
-```
-
-### 情感变化
-
-```
-{"name": "f-a/happy", "seed": -1, "speed": 1} 我今天收到了一个好消息！
-
-{"name": "f-a/sad", "seed": -1, "speed": 0.9} 但是也有一些不太好的事情。
-
-{"name": "f-a/angry", "seed": -1, "speed": 1.1} 有人居然欺骗了我！
-
-{"name": "f-a/tender", "seed": -1, "speed": 0.95} 不过，我选择原谅。
-```
-
-## 🔧 参数说明
-
-### speed（语速）
-
-- `0.8` - 慢速（适合学习）
-- `1.0` - 正常速度
-- `1.2` - 快速（适合新闻）
-- `1.5` - 很快
-
-### seed（随机种子）
-
-- `-1` - 每次都不同（推荐）
-- `0, 1, 2...` - 固定种子，每次相同
-
-## 📂 项目结构
+## 项目结构
 
 ```
 .
-├── generate.py              # 主程序
-├── gen/
-│   ├── speech.txt          # 输入文本（编辑这个）
-│   └── output/             # 生成的音频
-└── voices/                 # 音色文件
-    ├── f-a/
-    ├── f-b/
-    └── f-c/
+├── config.toml              # 配置文件
+├── speech.txt              # 输入文本（编辑这个）
+├── pyproject.toml          # 项目配置
+├── tts-article             # CLI 命令入口
+├── output/                 # 输出目录
+│   ├── audio/              # 音频片段
+│   └── final_audio.wav     # 合并后的音频
+├── voices/                 # 音色文件
+│   ├── nice/
+│   ├── f-a/
+│   ├── f-b/
+│   ├── f-c/
+│   ├── man/
+│   └── vivian/
+└── src/tts_article/        # 源代码
+    ├── config.py           # 配置加载
+    ├── pipeline.py         # 生成流程
+    ├── splitter.py         # 文本分割
+    └── generator.py        # 音频生成
 ```
 
-## 🎵 播放音频
+## CLI 用法
+
+```bash
+# 使用默认配置
+tts-article
+
+# 指定配置文件
+tts-article --config config.toml
+
+# 指定输入输出
+tts-article --input speech.txt --output output
+
+# 设置并发数
+tts-article --workers 4
+```
+
+## 播放音频
 
 ```bash
 # macOS
-afplay gen/output/segment_0000.wav
+afplay output/final_audio.wav
 
 # Linux
-aplay gen/output/segment_0000.wav
-
-# Windows
-start gen/output/segment_0000.wav
+aplay output/final_audio.wav
 ```
 
-## 🔧 合并音频（可选）
-
-```bash
-cd gen/output
-ls *.wav | sort | sed 's/^/file /' > filelist.txt
-ffmpeg -f concat -safe 0 -i filelist.txt -c copy ../final.wav
-```
-
-## ❓ 常见问题
-
-**Q: 找不到音色文件？**
-检查 `voices/` 目录，确保音色文件存在。
-
-**Q: JSON格式错误？**
-确保使用双引号，格式正确。
-
-**Q: 生成速度慢？**
-正常现象，每段需要几秒。确保使用GPU。
-
-## 📦 依赖
+## 依赖
 
 - Python 3.10+
 - f5-tts
 - torch
 - torchaudio
+- pydub
+- tomli (Python < 3.11)
 
-## 📄 许可
+## License
 
-与F5-TTS项目相同的许可证。
-
----
-
-**开始创作你的多音色TTS内容吧！** 🎉
-
-```bash
-python generate.py
-```
+MIT License
