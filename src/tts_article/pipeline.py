@@ -67,6 +67,20 @@ def _apply_polyphone_replacements(text: str, polyphone_dict: Dict[str, str] | No
     return result
 
 
+def _convert_nums_to_chinese(text: str) -> str:
+    """Convert Arabic numerals to Chinese characters using cn2an.
+
+    Example: "123" -> "一二三", "2024年" -> "二零二四年", "99.9" -> "九十九点九"
+    """
+    import cn2an
+    try:
+        # cn2an.transform with "an2cn" converts all numbers in text to Chinese
+        return cn2an.transform(text, "an2cn")
+    except Exception:
+        # Fallback: return original text if cn2an fails
+        return text
+
+
 class GenerationPipeline:
     def __init__(self, config: Config, workers: int = 4):
         self.config = config
@@ -133,6 +147,8 @@ class GenerationPipeline:
         try:
             # Apply polyphone replacements (homophone substitution)
             gen_text = _apply_polyphone_replacements(seg.text, self.config.polyphone_dict)
+            # Convert Arabic numerals to Chinese characters
+            gen_text = _convert_nums_to_chinese(gen_text)
 
             # Use lock for GPU inference on Metal (not thread-safe)
             with self._gpu_lock:
