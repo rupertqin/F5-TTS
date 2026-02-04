@@ -4,14 +4,14 @@ model_name = "F5TTS_v1_Base"
 max_sentence_length = 200
 
 # Global generation parameters
-nfe_step = 32          # Flow matching steps, range 16-64 (16=fast/low quality, 32=default, 64=slow/high quality)
+nfe_step = 64          # Flow matching steps, range 16-64 (16=fast/low quality, 32=default, 64=slow/high quality)
 cfg_strength = 2.0     # Voice similarity strength, range 1.0-4.0 (1.0=different, 2.0=default, 4.0=very similar)
 speed = 1.0            # Speech speed, range 0.5-2.0 (0.5=slow, 1.0=normal, 2.0=fast)
 target_rms = 0.1       # Audio volume, range 0.05-0.2 (0.05=quiet, 0.1=default, 0.2=loud)
 
 # Global polyphone overrides (applies to all voices)
 # Use homophone characters: "偏好" = "偏浩" (hao4 instead of hao3)
-polyphone_dict = { "偏好" = "偏浩", "行长" = "航长" }
+polyphone_dict = { "偏好" = "偏浩", "行长" = "航长", "左手倒右手" = "左手捣右手", "“" = "", "”" = "", "编码为"="编码维", "第一重" = "第一崇", "悬置为" = "悬置维", "个" = "各" }
 
 # Default/main voice points to tender
 [voices.main]
@@ -134,7 +134,7 @@ speed = 1.0
 [voices."man.surprise"]
 ref_audio = "voices/man/surprise.wav"
 ref_text = ""
-speed = 1.0
+speed = 0.9
 
 [voices."man.control"]
 ref_audio = "voices/man/control.wav"

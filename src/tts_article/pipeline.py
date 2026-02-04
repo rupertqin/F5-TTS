@@ -234,9 +234,11 @@ class GenerationPipeline:
         # Generate all segments
         # Collect segment metadata: index -> (path, duration, text, voice_name)
         index_to_audio: Dict[int, Tuple[str, float, str, str]] = {}
+        total_segments = len(segments)
 
         if use_multispeech and len(segments) > 1:
             # Parallel generation for multi-voice mode
+            completed = 0
             with ThreadPoolExecutor(max_workers=self.workers) as executor:
                 futures = {
                     executor.submit(self._generate_segment, seg, speech_types, audio_dir): seg
@@ -244,17 +246,22 @@ class GenerationPipeline:
                 }
                 for future in as_completed(futures):
                     seg = futures[future]
+                    completed += 1
+                    print(f"\rProgress: {completed}/{total_segments} ({completed*100//total_segments}%)", end="", flush=True)
                     try:
                         idx, path, duration, text = future.result()
                         index_to_audio[idx] = (path, duration, text, seg.voice_name or "main")
                     except Exception as e:
-                        print(f"Error generating segment {seg.index}: {e}")
+                        print(f"\nError generating segment {seg.index}: {e}")
                         raise
+            print()  # New line after progress
         else:
             # Sequential for single voice or single segment
-            for seg in segments:
+            for i, seg in enumerate(segments, 1):
+                print(f"\rProgress: {i}/{total_segments} ({i*100//total_segments}%)", end="", flush=True)
                 idx, path, duration, text = self._generate_segment(seg, speech_types or {"main": default_ref}, audio_dir)
                 index_to_audio[idx] = (path, duration, text, seg.voice_name or "main")
+            print()  # New line after progress
 
         # Sort by index to maintain order
         sorted_indices = sorted(index_to_audio.keys())

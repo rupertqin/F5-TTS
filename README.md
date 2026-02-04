@@ -41,6 +41,7 @@ python -m tts_article
 ### 3. 获取音频
 
 生成的音频在 `output/` 目录：
+
 - `output/audio/*.wav` - 各个片段
 - `output/final_audio.wav` - 合并后的完整音频
 
@@ -75,7 +76,7 @@ speed = 1.0
 
 ### 语音标记格式
 
-在 `speech.txt` 中使用 `[voice_name]` 切换音色：
+在 `speech.txt` 中使用 `[voice_name]`或者 `{"name": "voice_name", "seed": -1, "speed": 0.9} ` 切换音色：
 
 ```text
 [caixukun]
@@ -91,78 +92,84 @@ speed = 1.0
 ## 可用音色
 
 ### nice 音色
-| 音色 | 路径 | 语速 |
-|------|------|------|
-| main | voices/nice/happy.wav | 0.9 |
-| caixukun | voices/nice/caixukun.wav | 1.0 |
-| guimi | voices/nice/guimi.wav | 1.0 |
-| happy | voices/nice/happy.wav | 0.9 |
+
+| 音色     | 路径                     | 语速 |
+| -------- | ------------------------ | ---- |
+| main     | voices/nice/happy.wav    | 0.9  |
+| caixukun | voices/nice/caixukun.wav | 1.0  |
+| guimi    | voices/nice/guimi.wav    | 1.0  |
+| happy    | voices/nice/happy.wav    | 0.9  |
 
 ### f-a 情感音色
-| 音色 | 路径 | 语速 |
-|------|------|------|
-| tender | voices/f-a/tender.wav | 1.0 |
-| confused | voices/f-a/confused.wav | 0.9 |
-| sad | voices/f-a/sad.wav | 1.0 |
-| friendly | voices/f-a/friendly.wav | 1.0 |
-| angry | voices/f-a/angry.wav | 1.0 |
-| fear | voices/f-a/fear.wav | 1.0 |
+
+| 音色     | 路径                    | 语速 |
+| -------- | ----------------------- | ---- |
+| tender   | voices/f-a/tender.wav   | 1.0  |
+| confused | voices/f-a/confused.wav | 0.9  |
+| sad      | voices/f-a/sad.wav      | 1.0  |
+| friendly | voices/f-a/friendly.wav | 1.0  |
+| angry    | voices/f-a/angry.wav    | 1.0  |
+| fear     | voices/f-a/fear.wav     | 1.0  |
 
 ### f-b 语气词
-| 音色 | 路径 | 语速 |
-|------|------|------|
-| haoya | voices/f-b/haoya.wav | 1.0 |
-| heng | voices/f-b/heng.wav | 1.0 |
-| wa | voices/f-b/wa.wav | 1.1 |
+
+| 音色  | 路径                 | 语速 |
+| ----- | -------------------- | ---- |
+| haoya | voices/f-b/haoya.wav | 1.0  |
+| heng  | voices/f-b/heng.wav  | 1.0  |
+| wa    | voices/f-b/wa.wav    | 1.1  |
 
 ### f-c 口语化
-| 音色 | 路径 | 语速 |
-|------|------|------|
-| heihei | voices/f-c/heihei.wav | 0.6 |
-| xiaoshagua | voices/f-c/xiaoshagua.wav | 1.0 |
-| shiya | voices/f-c/shiya.wav | 1.0 |
+
+| 音色       | 路径                      | 语速 |
+| ---------- | ------------------------- | ---- |
+| heihei     | voices/f-c/heihei.wav     | 0.6  |
+| xiaoshagua | voices/f-c/xiaoshagua.wav | 1.0  |
+| shiya      | voices/f-c/shiya.wav      | 1.0  |
 
 ### man 音色
-| 音色 | 路径 | 语速 |
-|------|------|------|
-| man | voices/man/normal.wav | 1.1 |
-| man.angry | voices/man/angry.wav | 1.0 |
-| man.happy | voices/man/happy.wav | 1.0 |
-| man.sad | voices/man/sad.wav | 1.0 |
-| man.surprise | voices/man/surprise.wav | 1.0 |
-| man.control | voices/man/control.wav | 1.0 |
+
+| 音色         | 路径                    | 语速 |
+| ------------ | ----------------------- | ---- |
+| man          | voices/man/normal.wav   | 1.1  |
+| man.angry    | voices/man/angry.wav    | 1.0  |
+| man.happy    | voices/man/happy.wav    | 1.0  |
+| man.sad      | voices/man/sad.wav      | 1.0  |
+| man.surprise | voices/man/surprise.wav | 1.0  |
+| man.control  | voices/man/control.wav  | 1.0  |
 
 ### vivian 音色
-| 音色 | 路径 | 语速 |
-|------|------|------|
-| vivian | voices/vivian/normal.wav | 1.0 |
-| vivian.angry | voices/vivian/angry.wav | 1.0 |
-| vivian.happy | voices/vivian/happy.wav | 1.0 |
-| vivian.sad | voices/vivian/sad.wav | 1.0 |
-| vivian.surprise | voices/vivian/surprise.wav | 1.0 |
-| vivian.control | voices/vivian/control.wav | 1.0 |
+
+| 音色            | 路径                       | 语速 |
+| --------------- | -------------------------- | ---- |
+| vivian          | voices/vivian/normal.wav   | 1.0  |
+| vivian.angry    | voices/vivian/angry.wav    | 1.0  |
+| vivian.happy    | voices/vivian/happy.wav    | 1.0  |
+| vivian.sad      | voices/vivian/sad.wav      | 1.0  |
+| vivian.surprise | voices/vivian/surprise.wav | 1.0  |
+| vivian.control  | voices/vivian/control.wav  | 1.0  |
 
 ## 参数说明
 
 ### 全局参数
 
-| 参数 | 默认值 | 范围 | 说明 |
-|------|--------|------|------|
-| `nfe_step` | 32 | 16-64 | Flow matching 步数，越高越慢但质量越好 |
-| `cfg_strength` | 2.0 | 1.0-4.0 | 音色相似度，越高越接近参考音色 |
-| `speed` | 1.0 | 0.5-2.0 | 语速 |
-| `target_rms` | 0.1 | 0.05-0.2 | 音量 |
+| 参数           | 默认值 | 范围     | 说明                                   |
+| -------------- | ------ | -------- | -------------------------------------- |
+| `nfe_step`     | 32     | 16-64    | Flow matching 步数，越高越慢但质量越好 |
+| `cfg_strength` | 2.0    | 1.0-4.0  | 音色相似度，越高越接近参考音色         |
+| `speed`        | 1.0    | 0.5-2.0  | 语速                                   |
+| `target_rms`   | 0.1    | 0.05-0.2 | 音量                                   |
 
 ### 音色参数
 
-| 参数 | 说明 |
-|------|------|
-| `ref_audio` | 参考音频路径 |
-| `ref_text` | 参考音频对应的文本（可选，从同名 .txt 文件读取） |
-| `speed` | 该音色的语速（覆盖全局设置） |
-| `nfe_step` | 该音色的步数（覆盖全局设置） |
-| `cfg_strength` | 该音色的相似度（覆盖全局设置） |
-| `target_rms` | 该音色的音量（覆盖全局设置） |
+| 参数           | 说明                                             |
+| -------------- | ------------------------------------------------ |
+| `ref_audio`    | 参考音频路径                                     |
+| `ref_text`     | 参考音频对应的文本（可选，从同名 .txt 文件读取） |
+| `speed`        | 该音色的语速（覆盖全局设置）                     |
+| `nfe_step`     | 该音色的步数（覆盖全局设置）                     |
+| `cfg_strength` | 该音色的相似度（覆盖全局设置）                   |
+| `target_rms`   | 该音色的音量（覆盖全局设置）                     |
 
 ## 多音字处理
 
