@@ -104,9 +104,21 @@ class ConfigManager:
                     except Exception:
                         pass
             voices[key] = voice
-        # Load global polyphone_dict
+        # Load global polyphone_dict (supports inline dict or path to JSON file)
         polyphone_data = data.get("polyphone_dict")
-        polyphone_dict = polyphone_data if isinstance(polyphone_data, dict) else None
+        if isinstance(polyphone_data, str):
+            # Treat as path to JSON file
+            polyphone_dict = None
+            if os.path.exists(polyphone_data):
+                try:
+                    with open(polyphone_data, "r", encoding="utf-8") as pf:
+                        polyphone_dict = json.load(pf)
+                except Exception:
+                    pass
+        elif isinstance(polyphone_data, dict):
+            polyphone_dict = polyphone_data
+        else:
+            polyphone_dict = None
         cfg = Config(
             input_article=data.get("input_article", "speech.txt"),
             output_dir=data.get("output_dir", "output"),

@@ -10,8 +10,8 @@ speed = 1.0            # Speech speed, range 0.5-2.0 (0.5=slow, 1.0=normal, 2.0=
 target_rms = 0.1       # Audio volume, range 0.05-0.2 (0.05=quiet, 0.1=default, 0.2=loud)
 
 # Global polyphone overrides (applies to all voices)
-# Use homophone characters: "偏好" = "偏浩" (hao4 instead of hao3)
-polyphone_dict = { "偏好" = "偏浩", "行长" = "航长", "左手倒右手" = "左手捣右手", "“" = "", "”" = "", "编码为"="编码维", "第一重" = "第一崇", "悬置为" = "悬置维", "个" = "各", "高扬为" = "高扬维" }
+# supports inline dict or path to JSON file
+polyphone_dict = "polyphone_dict.json"
 
 # Default/main voice points to tender
 [voices.main]
