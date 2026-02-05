@@ -161,6 +161,8 @@ def parse_arguments():
 
 
 def main():
+    import shutil
+
     from .config import ConfigManager
     from .pipeline import GenerationPipeline
 
@@ -177,6 +179,13 @@ def main():
         config.input_article = args.input
     if args.output:
         config.output_dir = args.output
+
+    # Clear output directory
+    output_path = Path(config.output_dir)
+    if output_path.exists():
+        shutil.rmtree(output_path)
+    output_path.mkdir(parents=True, exist_ok=True)
+
     # Default article source: use speech.txt in current directory
     if not args.input and not Path("speech.txt").exists():
         raise FileNotFoundError("speech.txt not found in current directory")
