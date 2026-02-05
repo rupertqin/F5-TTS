@@ -11,6 +11,7 @@ class SentenceSegment:
     index: int
     text: str
     voice_name: str
+    speed: float | None = None
 
 
 class ArticleSplitter:
@@ -123,7 +124,7 @@ class ArticleSplitter:
             segments.append(("main", text))
         return segments
 
-    def _split_by_json_blocks(self, text: str) -> List[Tuple[str, str]]:
+    def _split_by_json_blocks(self, text: str) -> List[Tuple[str, str, float | None]]:
         # Detect blocks like: {"name": "f-a/happy", "seed": -1, "speed": 1} 这段文本
         blocks = []
         pattern = re.compile(r"\{[^}]+\}")
@@ -137,11 +138,12 @@ class ArticleSplitter:
             except Exception:
                 continue
             voice_name = cfg.get("name", "main")
+            speed = cfg.get("speed", None)
             start = m.end()
             end = matches[i+1].start() if i + 1 < len(matches) else len(text)
             segment_text = text[start:end].strip()
             if segment_text:
-                blocks.append((voice_name, segment_text))
+                blocks.append((voice_name, segment_text, speed))
         return blocks
 
     def split(self, article: str, default_voice: str = "main") -> List[SentenceSegment]:
@@ -150,7 +152,7 @@ class ArticleSplitter:
         segments: List[SentenceSegment] = []
         idx = 0
         if blocks:
-            for voice, text in blocks:
+            for voice, text, speed in blocks:
                 text = text.strip()
                 if not text:
                     continue
@@ -179,7 +181,7 @@ class ArticleSplitter:
                     s = s.strip()
                     if not s:
                         continue
-                    segments.append(SentenceSegment(index=idx, text=s, voice_name=voice))
+                    segments.append(SentenceSegment(index=idx, text=s, voice_name=voice, speed=speed))
                     idx += 1
             # normalize indices
             for i, seg in enumerate(segments):

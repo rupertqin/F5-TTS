@@ -98,14 +98,15 @@ class GenerationPipeline:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
 
-    def _get_audio_path(self, audio_dir: Path, voice_name: str | None, text: str) -> Path:
-        """Generate deterministic path for audio file based on text content.
+    def _get_audio_path(self, audio_dir: Path, voice_name: str | None, text: str, speed: float | None = None) -> Path:
+        """Generate deterministic path for audio file based on text content and speed.
 
-        Uses SHA1 hash to ensure cache hits even when text changes slightly.
+        Uses SHA1 hash to ensure cache hits even when text or speed changes.
         """
-        # Use full SHA1 hash (40 chars) for reliable caching
-        hash_suffix = hashlib.sha1(text.encode('utf-8')).hexdigest()
         voice = voice_name or "main"
+        # Include speed in cache key if specified
+        cache_key = f"{voice}_{text}_{speed if speed is not None else ''}"
+        hash_suffix = hashlib.sha1(cache_key.encode('utf-8')).hexdigest()
         return audio_dir / f"{voice}_{hash_suffix}.wav"
 
     def _postprocess_audio(self, audio_path: str) -> float:
@@ -122,12 +123,15 @@ class GenerationPipeline:
         except Exception:
             return len(AudioSegment.from_wav(audio_path)) / 1000.0
 
-    def _generate_segment(self, seg: SentenceSegment, speech_types: Dict[str, Tuple[str, str, float]], audio_dir: Path) -> Tuple[int, str, float, str]:
+    def _generate_segment(self, seg: SentenceSegment, speech_types: Dict[str, Tuple[str, str, float]], audio_dir: Path) -> Tuple[int, str, float, str, dict]:
         """Generate audio for a single segment (runs in worker thread).
 
-        Returns: (index, audio_path, duration, original_text)
+        Returns: (index, audio_path, duration, original_text, params_dict)
         """
         ref_audio, ref_text, v_speed = speech_types.get(seg.voice_name, speech_types.get("main"))
+
+        # Use segment-level speed if specified, otherwise fall back to voice/config speed
+        final_speed = seg.speed if seg.speed is not None else v_speed
 
         # Get voice-level parameters (override global if set)
         voice_cfg = self.voices.get(seg.voice_name) if self.voices else None
@@ -135,12 +139,19 @@ class GenerationPipeline:
         cfg_strength = voice_cfg.cfg_strength if voice_cfg and voice_cfg.cfg_strength else self.config.cfg_strength
         target_rms = voice_cfg.target_rms if voice_cfg and voice_cfg.target_rms else self.config.target_rms
 
-        # Cache key based on original text
-        audio_path = self._get_audio_path(audio_dir, seg.voice_name, seg.text)
+        params = {
+            "speed": final_speed,
+            "nfe_step": nfe_step,
+            "cfg_strength": cfg_strength,
+            "target_rms": target_rms,
+        }
+
+        # Cache key based on original text and speed
+        audio_path = self._get_audio_path(audio_dir, seg.voice_name, seg.text, final_speed)
 
         if audio_path.exists():
             duration = self._postprocess_audio(str(audio_path))
-            return seg.index, str(audio_path), duration, seg.text
+            return seg.index, str(audio_path), duration, seg.text, params
 
         # Generate with temporary file to avoid conflicts
         with tempfile.NamedTemporaryFile(suffix=".wav", dir=audio_dir, delete=False) as tmp:
@@ -161,14 +172,14 @@ class GenerationPipeline:
                     file_wave=tmp_path,
                     nfe_step=nfe_step,
                     cfg_strength=cfg_strength,
-                    speed=v_speed,
+                    speed=final_speed,
                     target_rms=target_rms,
                 )
             # Rename to final path
             os.rename(tmp_path, str(audio_path))
             duration = self._postprocess_audio(str(audio_path))
-            # Return: index, path, duration, original_text
-            return seg.index, str(audio_path), duration, seg.text
+            # Return: index, path, duration, original_text, params
+            return seg.index, str(audio_path), duration, seg.text, params
         except Exception:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
@@ -232,8 +243,8 @@ class GenerationPipeline:
             default_ref = list(speech_types.values())[0]
 
         # Generate all segments
-        # Collect segment metadata: index -> (path, duration, text, voice_name)
-        index_to_audio: Dict[int, Tuple[str, float, str, str]] = {}
+        # Collect segment metadata: index -> (path, duration, text, voice_name, params)
+        index_to_audio: Dict[int, Tuple[str, float, str, str, dict]] = {}
         total_segments = len(segments)
 
         if use_multispeech and len(segments) > 1:
@@ -249,8 +260,8 @@ class GenerationPipeline:
                     completed += 1
                     print(f"\rProgress: {completed}/{total_segments} ({completed*100//total_segments}%)", end="", flush=True)
                     try:
-                        idx, path, duration, text = future.result()
-                        index_to_audio[idx] = (path, duration, text, seg.voice_name or "main")
+                        idx, path, duration, text, params = future.result()
+                        index_to_audio[idx] = (path, duration, text, seg.voice_name or "main", params)
                     except Exception as e:
                         print(f"\nError generating segment {seg.index}: {e}")
                         raise
@@ -259,8 +270,8 @@ class GenerationPipeline:
             # Sequential for single voice or single segment
             for i, seg in enumerate(segments, 1):
                 print(f"\rProgress: {i}/{total_segments} ({i*100//total_segments}%)", end="", flush=True)
-                idx, path, duration, text = self._generate_segment(seg, speech_types or {"main": default_ref}, audio_dir)
-                index_to_audio[idx] = (path, duration, text, seg.voice_name or "main")
+                idx, path, duration, text, params = self._generate_segment(seg, speech_types or {"main": default_ref}, audio_dir)
+                index_to_audio[idx] = (path, duration, text, seg.voice_name or "main", params)
             print()  # New line after progress
 
         # Sort by index to maintain order
@@ -280,7 +291,7 @@ class GenerationPipeline:
             last_path = None
 
             for idx in sorted_indices:
-                path, duration, text, voice_name = index_to_audio[idx]
+                path, duration, text, voice_name, params = index_to_audio[idx]
                 start_time = current_time
                 end_time = current_time + duration
 
@@ -293,7 +304,7 @@ class GenerationPipeline:
                 combined += _AS.from_wav(path)
                 last_path = path
 
-                # Build segment metadata
+                # Build segment metadata with params
                 segments_metadata.append({
                     "index": idx,
                     "voice": voice_name,
@@ -302,6 +313,10 @@ class GenerationPipeline:
                     "end_time": round(end_time, 3),
                     "duration": round(duration, 3),
                     "audio_file": Path(path).name,
+                    "speed": params["speed"],
+                    "nfe_step": params["nfe_step"],
+                    "cfg_strength": params["cfg_strength"],
+                    "target_rms": params["target_rms"],
                 })
 
                 current_time += duration
@@ -316,6 +331,10 @@ class GenerationPipeline:
             "segment_count": len(segments_metadata),
             "created_at": datetime.now().isoformat(),
             "model": self.config.model_name,
+            "speed": self.config.speed,
+            "nfe_step": self.config.nfe_step,
+            "cfg_strength": self.config.cfg_strength,
+            "target_rms": self.config.target_rms,
             "segments": segments_metadata,
         }
 
