@@ -263,23 +263,30 @@ class DiT(nn.Module):
         cache: bool = True,
         audio_mask: bool["b n"] | None = None,
     ):
-        if self.text_uncond is None or self.text_cond is None or not cache:
-            if audio_mask is None:
-                seq_len = x.shape[1]
-            else:
-                seq_len = audio_mask.sum(dim=1)  # per-sample valid speech length
-            text_embed = self.text_embed(text, seq_len=seq_len, drop_text=drop_text)
+        # Determine the sequence length we should generate text embeddings for
+        if audio_mask is None:
+            seq_len_to_pass = x.shape[1]
+            desired_max_len = int(seq_len_to_pass)
+        else:
+            # per-sample valid speech length tensor
+            seq_len_to_pass = audio_mask.sum(dim=1)
+            desired_max_len = int(seq_len_to_pass.max().item())
+
+        # Use cached text embeddings only when they exist and match the desired sequence length.
+        text_embed = None
+        if cache:
+            cached = self.text_uncond if drop_text else self.text_cond
+            if cached is not None and cached.shape[1] == desired_max_len:
+                text_embed = cached
+
+        # Compute (and optionally cache) text embeddings when no valid cache is available
+        if text_embed is None:
+            text_embed = self.text_embed(text, seq_len=seq_len_to_pass, drop_text=drop_text)
             if cache:
                 if drop_text:
                     self.text_uncond = text_embed
                 else:
                     self.text_cond = text_embed
-
-        if cache:
-            if drop_text:
-                text_embed = self.text_uncond
-            else:
-                text_embed = self.text_cond
 
         x = self.input_embed(x, cond, text_embed, drop_audio_cond=drop_audio_cond, audio_mask=audio_mask)
 
