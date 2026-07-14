@@ -29,49 +29,102 @@
 ### 2. 运行生成
 
 ```bash
-tts-article
+# Create a conda env with python_version>=3.10  (you could also use virtualenv)
+conda create -n f5-tts python=3.11
+conda activate f5-tts
+
+# Install FFmpeg if you haven't yet
+conda install ffmpeg
 ```
 
-或者使用 Python：
+### Install PyTorch with matched device
+
+<details>
+<summary>NVIDIA GPU</summary>
+
+> ```bash
+> # Install pytorch with your CUDA version, e.g.
+> pip install torch==2.8.0+cu128 torchaudio==2.8.0+cu128 --extra-index-url https://download.pytorch.org/whl/cu128
+>
+> # And also possible previous versions, e.g.
+> pip install torch==2.4.0+cu124 torchaudio==2.4.0+cu124 --extra-index-url https://download.pytorch.org/whl/cu124
+> # etc.
+> ```
+
+</details>
+
+<details>
+<summary>AMD GPU</summary>
+
+> ```bash
+> # Install pytorch with your ROCm version (Linux only), e.g.
+> pip install torch==2.9.1+rocm7.2 torchaudio==2.9.1+rocm7.2 --extra-index-url https://download.pytorch.org/whl/rocm7.2
+>
+> # For older GPUs (RDNA1/2/3 only):
+> # pip install torch==2.5.1+rocm6.2 torchaudio==2.5.1+rocm6.2 --extra-index-url https://download.pytorch.org/whl/rocm6.2
+> ```
+>
+> **Note:** RDNA 3.5 and RDNA 4 GPUs (Radeon 8050S/8060S, RX 9060/9070 series) require
+> ROCm 7.x — these architectures (gfx1151/gfx1201) are not included in ROCm 6.x
+> ([6.2 compatibility matrix](https://rocm.docs.amd.com/en/docs-6.2.4/compatibility/compatibility-matrix.html) vs
+> [7.2 compatibility matrix](https://rocm.docs.amd.com/en/docs-7.2.3/compatibility/compatibility-matrix.html)).
+> Using ROCm 6.x on these GPUs causes `HIP error: invalid device function` ([#1236](https://github.com/SWivid/F5-TTS/issues/1236)).
+
+</details>
+
+<details>
+<summary>Intel GPU</summary>
+
+> ```bash
+> # Install pytorch with your XPU version, e.g.
+> # Intel® Deep Learning Essentials or Intel® oneAPI Base Toolkit must be installed
+> pip install torch torchaudio --index-url https://download.pytorch.org/whl/test/xpu
+>
+> # Intel GPU support is also available through IPEX (Intel® Extension for PyTorch)
+> # IPEX does not require the Intel® Deep Learning Essentials or Intel® oneAPI Base Toolkit
+> # See: https://pytorch-extension.intel.com/installation?request=platform
+> ```
+
+</details>
+
+<details>
+<summary>Apple Silicon</summary>
+
+> ```bash
+> # Install the stable pytorch, e.g.
+> pip install torch torchaudio
+> ```
+
+</details>
+
+### Then you can choose one from below:
+
+> ### 1. As a pip package (if just for inference)
+>
+> ```bash
+> pip install f5-tts
+> ```
+>
+> ### 2. Local editable (if also do training, finetuning)
+>
+> ```bash
+> git clone https://github.com/SWivid/F5-TTS.git
+> cd F5-TTS
+> # git submodule update --init --recursive  # (optional, if use bigvgan as vocoder)
+> pip install -e .
+> ```
+
+### Docker usage also available
 
 ```bash
-python -m tts_article
-```
+# Build from Dockerfile
+docker build -t f5tts:v1 .
 
-### 3. 获取音频
+# Run from GitHub Container Registry
+docker container run --rm -it --gpus=all --mount 'type=volume,source=f5-tts,target=/root/.cache/huggingface/hub/' -p 7860:7860 ghcr.io/swivid/f5-tts:main
 
-生成的音频在 `output/` 目录：
-
-- `output/audio/*.wav` - 各个片段
-- `output/final_audio.wav` - 合并后的完整音频
-
-## 配置说明
-
-### 配置文件 (config.toml)
-
-```toml
-input_article = "speech.txt"      # 输入文本文件
-output_dir = "output"             # 输出目录
-model_name = "F5TTS_v1_Base"      # 模型名称
-max_sentence_length = 200         # 最大句子长度
-
-# 生成参数
-nfe_step = 32                     # Flow matching 步数 (16-64)
-cfg_strength = 2.0                # 音色相似度 (1.0-4.0)
-speed = 1.0                       # 语速 (0.5-2.0)
-target_rms = 0.1                  # 音量 (0.05-0.2)
-
-# 多音字处理（使用同音字替换）
-polyphone_dict = { "偏好" = "偏浩", "行长" = "航长" }
-
-# 音色配置
-[voices.main]
-ref_audio = "voices/nice/happy.wav"
-speed = 0.9
-
-[voices.vivian]
-ref_audio = "voices/vivian/normal.wav"
-speed = 1.0
+# Quickstart if you want to just run the web interface (not CLI)
+docker container run --rm -it --gpus=all --mount 'type=volume,source=f5-tts,target=/root/.cache/huggingface/hub/' -p 7860:7860 ghcr.io/swivid/f5-tts:main f5-tts_infer-gradio --host 0.0.0.0
 ```
 
 ### 语音标记格式
